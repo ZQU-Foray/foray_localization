@@ -79,7 +79,7 @@ def read_pcd(path):
         y_off = offsets[index["y"]]
         z_off = offsets[index["z"]]
         for i in range(points):
-            record = data[offset + i * stride: offset + (i + 1) * stride]
+            record = data[offset + i * stride : offset + (i + 1) * stride]
             if len(record) < stride:
                 break
             xyz.append(
@@ -106,8 +106,8 @@ def sha256_file(path):
 
 
 def build_grid(points, resolution, field_size, center, z_min, z_max):
-    width = int(math.ceil(field_size[0] / resolution))
-    height = int(math.ceil(field_size[1] / resolution))
+    width = math.ceil(field_size[0] / resolution)
+    height = math.ceil(field_size[1] / resolution)
     origin = (
         center[0] - field_size[0] / 2.0,
         center[1] - field_size[1] / 2.0,
@@ -117,8 +117,8 @@ def build_grid(points, resolution, field_size, center, z_min, z_max):
     for x, y, z in points:
         if z < z_min or z > z_max:
             continue
-        ix = int(math.floor((x - origin[0]) / resolution))
-        iy = int(math.floor((y - origin[1]) / resolution))
+        ix = math.floor((x - origin[0]) / resolution)
+        iy = math.floor((y - origin[1]) / resolution)
         if 0 <= ix < width and 0 <= iy < height:
             cells[iy * width + ix] = OCCUPIED
     return width, height, origin, cells
@@ -128,8 +128,10 @@ def write_pgm(path, width, height, cells):
     path = pathlib.Path(path)
     with open(path, "wb") as handle:
         handle.write(f"P5\n{width} {height}\n255\n".encode("ascii"))
-        for row in range(height - 1, -1, -1):
-            handle.write(bytes(cells[row * width: (row + 1) * width]))
+        handle.writelines(
+            bytes(cells[row * width : (row + 1) * width])
+            for row in range(height - 1, -1, -1)
+        )
 
 
 def main(argv=None):
@@ -137,7 +139,9 @@ def main(argv=None):
     parser.add_argument("--pcd", required=True, help="输入 PCD（ascii 或 binary）")
     parser.add_argument("--output-dir", required=True, help="输出目录")
     parser.add_argument("--version", default="rmul-2027-3v3", help="地图版本号")
-    parser.add_argument("--resolution", type=float, default=0.05, help="栅格分辨率 m/cell")
+    parser.add_argument(
+        "--resolution", type=float, default=0.05, help="栅格分辨率 m/cell"
+    )
     parser.add_argument(
         "--field-size", type=float, nargs=2, default=(12.0, 8.0), help="场地尺寸 m m"
     )
@@ -191,7 +195,7 @@ def main(argv=None):
         "source": args.source,
     }
     manifest["created_at"] = (
-        datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
+        datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat()
     )
     manifest_path = output_dir / "manifest.yaml"
     with open(manifest_path, "w", encoding="utf-8") as handle:

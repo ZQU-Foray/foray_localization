@@ -4,21 +4,19 @@
 
 #include <gtest/gtest.h>
 
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 
-namespace
-{
+namespace {
 
 using foray::localization_ros::to_isometry;
 using foray::localization_ros::to_point_cloud;
 using foray::localization_ros::validate_header;
 using foray::localization_ros::validate_point_cloud;
 
-sensor_msgs::msg::PointCloud2 make_cloud(const std::vector<float> & xyz, bool with_nan)
-{
+sensor_msgs::msg::PointCloud2 make_cloud(const std::vector<float>& xyz, bool with_nan) {
     sensor_msgs::msg::PointCloud2 cloud;
     cloud.header.frame_id = "front_mid360";
     cloud.height = 1;
@@ -33,24 +31,21 @@ sensor_msgs::msg::PointCloud2 make_cloud(const std::vector<float> & xyz, bool wi
     cloud.fields[1].offset = 4;
     cloud.fields[2].name = "z";
     cloud.fields[2].offset = 8;
-    for (auto & field : cloud.fields)
-    {
+    for (auto& field : cloud.fields) {
         field.datatype = sensor_msgs::msg::PointField::FLOAT32;
         field.count = 1;
     }
     cloud.data.resize(cloud.row_step);
     std::memcpy(cloud.data.data(), xyz.data(), cloud.data.size());
-    if (with_nan)
-    {
+    if (with_nan) {
         const float nan = std::numeric_limits<float>::quiet_NaN();
         std::memcpy(cloud.data.data(), &nan, sizeof(float));
     }
     return cloud;
 }
 
-TEST(AdaptersTest, ConvertsPointCloudAndSkipsNan)
-{
-    const auto cloud = make_cloud({ 1.0F, 2.0F, 3.0F, 4.0F, 5.0F, 6.0F }, true);
+TEST(AdaptersTest, ConvertsPointCloudAndSkipsNan) {
+    const auto cloud = make_cloud({1.0F, 2.0F, 3.0F, 4.0F, 5.0F, 6.0F}, true);
     std::string error;
     ASSERT_TRUE(validate_point_cloud(cloud, &error)) << error;
 
@@ -59,8 +54,7 @@ TEST(AdaptersTest, ConvertsPointCloudAndSkipsNan)
     EXPECT_FLOAT_EQ(points.points[0].x(), 4.0F);
 }
 
-TEST(AdaptersTest, RejectsCloudWithoutFields)
-{
+TEST(AdaptersTest, RejectsCloudWithoutFields) {
     sensor_msgs::msg::PointCloud2 cloud;
     cloud.width = 1;
     cloud.height = 1;
@@ -72,8 +66,7 @@ TEST(AdaptersTest, RejectsCloudWithoutFields)
     EXPECT_FALSE(error.empty());
 }
 
-TEST(AdaptersTest, ValidatesHeaderStampAndFrame)
-{
+TEST(AdaptersTest, ValidatesHeaderStampAndFrame) {
     std_msgs::msg::Header header;
     header.frame_id = "map";
     std::string error;
@@ -84,8 +77,7 @@ TEST(AdaptersTest, ValidatesHeaderStampAndFrame)
     EXPECT_FALSE(validate_header(header, "odom", &error));
 }
 
-TEST(AdaptersTest, ConvertsPoseAndRejectsZeroQuaternion)
-{
+TEST(AdaptersTest, ConvertsPoseAndRejectsZeroQuaternion) {
     geometry_msgs::msg::Pose pose;
     pose.orientation.w = 1.0;
     pose.position.x = 1.0;
@@ -97,4 +89,4 @@ TEST(AdaptersTest, ConvertsPoseAndRejectsZeroQuaternion)
     EXPECT_FALSE(to_isometry(pose, &transform));
 }
 
-}  // namespace
+} // namespace

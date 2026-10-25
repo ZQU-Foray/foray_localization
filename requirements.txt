@@ -1,0 +1,4 @@
+# 仓根 CI 依赖（GitHub Actions 的 test-python 作业会执行 pip install -r requirements.txt）
+# 包内脚本自身的运行依赖见 src/foray_localization_tools/test/requirements.txt
+pytest>=7.0
+PyYAML>=6.0

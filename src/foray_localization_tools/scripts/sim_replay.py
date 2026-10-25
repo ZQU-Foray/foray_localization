@@ -13,7 +13,6 @@
 
 import argparse
 import csv
-import math
 import pathlib
 import random
 import sys
@@ -21,7 +20,7 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from sim_common import (  # noqa: E402
+from sim_common import (
     DriftModel,
     RangeImage,
     Trajectory,
@@ -53,8 +52,9 @@ def dump_offline(args, world, trajectory):
     (out / "scans").mkdir(parents=True, exist_ok=True)
     range_image = RangeImage(world)
     ticks = int(args.duration * args.odom_rate)
-    with open(out / "poses.csv", "w", newline="", encoding="utf-8") as poses, \
-            open(out / "odom.csv", "w", newline="", encoding="utf-8") as odoms:
+    with open(out / "poses.csv", "w", newline="", encoding="utf-8") as poses, open(
+        out / "odom.csv", "w", newline="", encoding="utf-8"
+    ) as odoms:
         pose_writer = csv.writer(poses)
         odom_writer = csv.writer(odoms)
         pose_writer.writerow(["timestamp", "x", "y", "z", "yaw"])
@@ -67,16 +67,19 @@ def dump_offline(args, world, trajectory):
             if not dropped:
                 odom = drift.update(true_pose)
                 x, y, z, _, _, yaw = to_xyz_rpy(odom)
-                odom_writer.writerow([f"{t:.6f}", f"{x:.6f}", f"{y:.6f}", f"{z:.6f}",
-                                      f"{yaw:.6f}"])
+                odom_writer.writerow(
+                    [f"{t:.6f}", f"{x:.6f}", f"{y:.6f}", f"{z:.6f}", f"{yaw:.6f}"]
+                )
             x, y, z, _, _, yaw = to_xyz_rpy(true_pose)
-            pose_writer.writerow([f"{t:.6f}", f"{x:.6f}", f"{y:.6f}", f"{z:.6f}",
-                                  f"{yaw:.6f}"])
+            pose_writer.writerow(
+                [f"{t:.6f}", f"{x:.6f}", f"{y:.6f}", f"{z:.6f}", f"{yaw:.6f}"]
+            )
             if t + 1e-9 >= next_cloud:
                 next_cloud += 1.0 / args.cloud_rate
                 lidar_pose = transform_pose(true_pose, BASE_TO_LIDAR)
-                cloud = raycast(range_image, lidar_pose, args.points, rng,
-                                noise_sigma=args.noise)
+                cloud = raycast(
+                    range_image, lidar_pose, args.points, rng, noise_sigma=args.noise
+                )
                 write_pcd(out / "scans" / f"cloud_{t:.6f}.pcd", cloud)
     print(f"离线数据已写入 {out}（{ticks + 1} 个位姿采样）")
     return 0
@@ -93,8 +96,8 @@ def run_ros(args, world, trajectory):
     from geometry_msgs.msg import TransformStamped
     from nav_msgs.msg import Odometry
     from sensor_msgs.msg import PointCloud2
-    from std_msgs.msg import Header
     from sensor_msgs_py import point_cloud2
+    from std_msgs.msg import Header
     from tf2_ros import StaticTransformBroadcaster
 
     rclpy.init()
@@ -149,8 +152,9 @@ def run_ros(args, world, trajectory):
         if t + 1e-9 >= state["next_cloud"]:
             state["next_cloud"] += 1.0 / args.cloud_rate
             lidar_pose = transform_pose(true_pose, BASE_TO_LIDAR)
-            cloud = raycast(range_image, lidar_pose, args.points, rng,
-                            noise_sigma=args.noise)
+            cloud = raycast(
+                range_image, lidar_pose, args.points, rng, noise_sigma=args.noise
+            )
             header = Header()
             header.stamp = stamp_msg
             header.frame_id = "livox_frame"
@@ -184,10 +188,15 @@ def main(argv=None):
     parser.add_argument("--points", type=int, default=3000, help="每帧射线数")
     parser.add_argument("--noise", type=float, default=0.02, help="测距噪声 sigma m")
     parser.add_argument("--seed", type=int, default=0, help="随机种子")
-    parser.add_argument("--drop-odom-after", type=float, default=-1.0,
-                        help="在 t 秒后人为中断里程计（-1 关闭）")
-    parser.add_argument("--drop-odom-duration", type=float, default=1.0,
-                        help="中断持续时间 s")
+    parser.add_argument(
+        "--drop-odom-after",
+        type=float,
+        default=-1.0,
+        help="在 t 秒后人为中断里程计（-1 关闭）",
+    )
+    parser.add_argument(
+        "--drop-odom-duration", type=float, default=1.0, help="中断持续时间 s"
+    )
     parser.add_argument("--ros", action="store_true", help="发布 ROS 2 话题")
     parser.add_argument("--dump-dir", help="离线写出 scans/poses.csv/odom.csv")
     args = parser.parse_args(argv)
@@ -197,7 +206,7 @@ def main(argv=None):
     if args.points <= 0:
         parser.error("points 必须为正")
 
-    manifest, points = build_world(args.manifest)
+    _, points = build_world(args.manifest)
     trajectory = Trajectory()
     if args.dump_dir:
         return dump_offline(args, points, trajectory)

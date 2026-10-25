@@ -149,7 +149,7 @@ def read_pcd(path):
             if types[index[name]] != "F":
                 raise ValueError(f"PCD 字段 {name} 不是浮点类型")
         for i in range(points):
-            record = data[offset + i * stride: offset + (i + 1) * stride]
+            record = data[offset + i * stride : offset + (i + 1) * stride]
             if len(record) < stride:
                 break
             coords = []
@@ -206,7 +206,9 @@ class RangeImage:
             az = math.atan2(y, x)
             el = math.asin(max(-1.0, min(1.0, z / dist)))
             ia = int((az + math.pi) / (2.0 * math.pi) * az_bins) % az_bins
-            ie = int((math.degrees(el) - EL_MIN_DEG) / (EL_MAX_DEG - EL_MIN_DEG) * el_bins)
+            ie = int(
+                (math.degrees(el) - EL_MIN_DEG) / (EL_MAX_DEG - EL_MIN_DEG) * el_bins
+            )
             if ie < 0 or ie >= el_bins:
                 continue
             index = ie * az_bins + ia
@@ -214,7 +216,11 @@ class RangeImage:
 
     def range_at(self, azimuth, elevation):
         ia = int((azimuth + math.pi) / (2.0 * math.pi) * self.az_bins) % self.az_bins
-        ie = int((math.degrees(elevation) - EL_MIN_DEG) / (EL_MAX_DEG - EL_MIN_DEG) * self.el_bins)
+        ie = int(
+            (math.degrees(elevation) - EL_MIN_DEG)
+            / (EL_MAX_DEG - EL_MIN_DEG)
+            * self.el_bins
+        )
         if ie < 0 or ie >= self.el_bins:
             return math.inf
         return self.ranges[ie * self.az_bins + ia]
@@ -226,7 +232,7 @@ def sample_ray_directions(count, rng):
     for _ in range(count):
         azimuth = rng.uniform(-math.pi, math.pi)
         u = rng.random()
-        elevation = math.radians(EL_MIN_DEG + (EL_MAX_DEG - EL_MIN_DEG) * (u ** 1.6))
+        elevation = math.radians(EL_MIN_DEG + (EL_MAX_DEG - EL_MIN_DEG) * (u**1.6))
         directions.append((azimuth, elevation))
     return directions
 
@@ -249,15 +255,9 @@ def raycast(range_image, pose, count, rng, noise_sigma=0.02, dropout=0.02):
         ca, sa = math.cos(azimuth), math.sin(azimuth)
         dx, dy, dz = ce * ca, ce * sa, se
         # 世界点 = R * 传感器点 + t；传感器点 = R^T * (世界点 - t)
-        wx = trans[0] + distance * (
-            rot[0][0] * dx + rot[0][1] * dy + rot[0][2] * dz
-        )
-        wy = trans[1] + distance * (
-            rot[1][0] * dx + rot[1][1] * dy + rot[1][2] * dz
-        )
-        wz = trans[2] + distance * (
-            rot[2][0] * dx + rot[2][1] * dy + rot[2][2] * dz
-        )
+        wx = trans[0] + distance * (rot[0][0] * dx + rot[0][1] * dy + rot[0][2] * dz)
+        wy = trans[1] + distance * (rot[1][0] * dx + rot[1][1] * dy + rot[1][2] * dz)
+        wz = trans[2] + distance * (rot[2][0] * dx + rot[2][1] * dy + rot[2][2] * dz)
         px, py, pz = wx - trans[0], wy - trans[1], wz - trans[2]
         cloud.append(
             (
@@ -291,15 +291,25 @@ class Trajectory:
 class DriftModel:
     """把真值增量改写成带尺度/航向/噪声误差的里程计增量。"""
 
-    def __init__(self, scale_error=0.02, yaw_drift_deg_per_m=0.8, yaw_noise_deg=0.05,
-                 pos_noise=0.005, seed=0):
+    def __init__(
+        self,
+        scale_error=0.02,
+        yaw_drift_deg_per_m=0.8,
+        yaw_noise_deg=0.05,
+        pos_noise=0.005,
+        seed=0,
+    ):
         self.scale_error = scale_error
         self.yaw_drift = math.radians(yaw_drift_deg_per_m)
         self.yaw_noise = math.radians(yaw_noise_deg)
         self.pos_noise = pos_noise
         self.rng = random.Random(seed)
-        self.odom = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0],
-                     [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+        self.odom = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
         self.last_true = None
 
     def update(self, true_pose):
@@ -345,7 +355,7 @@ def rpe_rmse(estimated, ground_truth, step=10):
         gt_dy = ground_truth[j][1] - ground_truth[i][1]
         es_dx = estimated[j][0] - estimated[i][0]
         es_dy = estimated[j][1] - estimated[i][1]
-        pairs.append((math.hypot(es_dx - gt_dx, es_dy - gt_dy)))
+        pairs.append(math.hypot(es_dx - gt_dx, es_dy - gt_dy))
     if not pairs:
         return float("inf")
     return math.sqrt(sum(p * p for p in pairs) / len(pairs))

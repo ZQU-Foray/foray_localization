@@ -1,11 +1,9 @@
 """评估与指标路径单测：不启动 ROS，直接跑离线 CSV 模式。"""
 
 import csv
-import math
-
-import pytest
 
 import eval_trajectory as ev
+import pytest
 
 
 def build_collector(drift=0.0, ok_states=(1,) * 10):
@@ -35,7 +33,7 @@ def test_transitions_and_lost_to_ok_latency():
     states = (1, 1, 2, 3, 3, 3, 1, 1)
     collector = ev.Collector()
     for i, state in enumerate(states):
-        collector.add_state(0.1 * i, 0.0, 0.0, state, 0.5, "r%d" % state)
+        collector.add_state(0.1 * i, 0.0, 0.0, state, 0.5, f"r{state}")
         collector.add_truth(0.1 * i, 0.0, 0.0)
     summary = collector.summary()
     names = [item["state"] for item in summary["transitions"]]

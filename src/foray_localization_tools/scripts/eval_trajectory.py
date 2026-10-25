@@ -13,13 +13,12 @@
 import argparse
 import csv
 import json
-import math
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from sim_common import ate_rmse, rpe_rmse  # noqa: E402
+from sim_common import ate_rmse, rpe_rmse
 
 STATE_NAMES = {0: "INITIALIZING", 1: "OK", 2: "DEGRADED", 3: "LOST"}
 
@@ -93,7 +92,9 @@ class Collector:
             "rpe_rmse": None if rpe is None else round(rpe, 4),
             "ok_ratio": round(ok / len(self.samples), 4) if self.samples else 0.0,
             "transitions": transitions,
-            "lost_to_ok_sec": None if lost_ok_latency is None else round(lost_ok_latency, 3),
+            "lost_to_ok_sec": (
+                None if lost_ok_latency is None else round(lost_ok_latency, 3)
+            ),
         }
 
 
@@ -116,8 +117,9 @@ def load_csv(collector, samples_path, truth_path):
 
 def run(args, collector):
     import rclpy
-    from foray_localization_ros.msg import LocalizationState
     from nav_msgs.msg import Odometry
+
+    from foray_localization_ros.msg import LocalizationState
 
     rclpy.init()
     node = rclpy.create_node("eval_trajectory")
@@ -125,8 +127,9 @@ def run(args, collector):
     def on_state(msg):
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         position = msg.pose.pose.position
-        collector.add_state(stamp, position.x, position.y, msg.state, msg.confidence,
-                            msg.reason)
+        collector.add_state(
+            stamp, position.x, position.y, msg.state, msg.confidence, msg.reason
+        )
 
     def on_truth(msg):
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
@@ -138,9 +141,14 @@ def run(args, collector):
 
     if args.duration > 0.0:
         deadline = node.get_clock().now().nanoseconds * 1e-9 + args.duration
-        timer = node.create_timer(0.2, lambda: rclpy.shutdown()
-                                  if node.get_clock().now().nanoseconds * 1e-9 >= deadline
-                                  else None)
+        timer = node.create_timer(
+            0.2,
+            lambda: (
+                rclpy.shutdown()
+                if node.get_clock().now().nanoseconds * 1e-9 >= deadline
+                else None
+            ),
+        )
     else:
         timer = None
     try:
@@ -158,15 +166,22 @@ def run(args, collector):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--duration", type=float, default=30.0, help="采集时长 s（0=手动结束）")
+    parser.add_argument(
+        "--duration", type=float, default=30.0, help="采集时长 s（0=手动结束）"
+    )
     parser.add_argument("--max-ate", type=float, default=0.15, help="ATE RMSE 上限 m")
     parser.add_argument("--min-ok-ratio", type=float, default=0.90, help="OK 占比下限")
     parser.add_argument("--min-samples", type=int, default=20, help="最少有效采样")
     parser.add_argument("--rpe-step", type=int, default=5, help="RPE 帧间隔")
     parser.add_argument("--json", help="结果写入 JSON 路径")
-    parser.add_argument("--offline", action="store_true",
-                        help="不启动 ROS：从 --samples/--truth CSV 读取")
-    parser.add_argument("--samples", help="离线采样 CSV（t,x,y,state,confidence,reason）")
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="不启动 ROS：从 --samples/--truth CSV 读取",
+    )
+    parser.add_argument(
+        "--samples", help="离线采样 CSV（t,x,y,state,confidence,reason）"
+    )
     parser.add_argument("--truth", help="离线真值 CSV（t,x,y）")
     args = parser.parse_args(argv)
 

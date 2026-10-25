@@ -4,8 +4,7 @@
 
 #include <gtest/gtest.h>
 
-namespace
-{
+namespace {
 
 using foray::localization::HealthState;
 using foray::localization::HealthStatus;
@@ -19,8 +18,7 @@ using foray::localization_ros::to_msg_pose;
 using foray::localization_ros::to_msg_state;
 using foray::localization_ros::to_msg_time;
 
-TEST(ConversionTest, StateCarriesHealthAndPose)
-{
+TEST(ConversionTest, StateCarriesHealthAndPose) {
     HealthStatus health;
     health.state = HealthState::kDegraded;
     health.confidence = 0.42;
@@ -33,8 +31,7 @@ TEST(ConversionTest, StateCarriesHealthAndPose)
     pose.transform = Eigen::Isometry3d::Identity();
     pose.transform.translation() = Eigen::Vector3d(1.0, 2.0, 0.0);
 
-    const auto message =
-        to_msg_state(health, pose, PoseSource::kSentryLidar, 1500000000LL);
+    const auto message = to_msg_state(health, pose, PoseSource::kSentryLidar, 1500000000LL);
     EXPECT_EQ(message.state, message.STATE_DEGRADED);
     EXPECT_EQ(message.source, message.SOURCE_SENTRY_LIDAR);
     EXPECT_DOUBLE_EQ(message.confidence, 0.42);
@@ -45,8 +42,7 @@ TEST(ConversionTest, StateCarriesHealthAndPose)
     EXPECT_EQ(message.reason, "残差偏大");
 }
 
-TEST(ConversionTest, PoseRoundTrip)
-{
+TEST(ConversionTest, PoseRoundTrip) {
     Eigen::Isometry3d transform = Eigen::Isometry3d::Identity();
     transform.linear() = Eigen::AngleAxisd(0.7, Eigen::Vector3d::UnitZ()).toRotationMatrix();
     transform.translation() = Eigen::Vector3d(-1.5, 0.25, 0.0);
@@ -57,12 +53,11 @@ TEST(ConversionTest, PoseRoundTrip)
     EXPECT_LT((restored.linear() - transform.linear()).norm(), 1e-9);
 }
 
-TEST(ConversionTest, MapMetaAndObstacles)
-{
+TEST(ConversionTest, MapMetaAndObstacles) {
     MapManifest manifest;
     manifest.version = "2027_3v3";
     manifest.frame_id = "map";
-    manifest.origin = { 1.0, -2.0, 0.0 };
+    manifest.origin = {1.0, -2.0, 0.0};
     manifest.resolution = 0.05;
     manifest.width = 240;
     manifest.height = 160;
@@ -84,17 +79,16 @@ TEST(ConversionTest, MapMetaAndObstacles)
     cluster.confidence = 0.9;
     cluster.mean_residual_m = 0.4;
 
-    const auto obstacles = to_msg_obstacles({ cluster }, "map", 2000LL);
+    const auto obstacles = to_msg_obstacles({cluster}, "map", 2000LL);
     ASSERT_EQ(obstacles.obstacles.size(), 1U);
     EXPECT_EQ(obstacles.header.frame_id, "map");
     EXPECT_EQ(obstacles.obstacles[0].point_count, 12U);
     EXPECT_NEAR(obstacles.obstacles[0].size.x, 1.0, 1e-5);
 }
 
-TEST(ConversionTest, TimestampRoundTrip)
-{
+TEST(ConversionTest, TimestampRoundTrip) {
     const auto stamp = to_msg_time(1234567890123LL);
     EXPECT_EQ(foray::localization_ros::to_ns(stamp), 1234567890123LL);
 }
 
-}  // namespace
+} // namespace

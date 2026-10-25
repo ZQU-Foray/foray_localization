@@ -20,8 +20,10 @@ def generate_launch_description():
         [FindPackageShare("foray_localization_bringup"), "config", config_name]
     )
 
-    common_params = [config_file, {"map_manifest": map_manifest,
-                                   "verify_map_hashes": verify_map_hashes}]
+    common_params = [
+        config_file,
+        {"map_manifest": map_manifest, "verify_map_hashes": verify_map_hashes},
+    ]
 
     return LaunchDescription(
         [
