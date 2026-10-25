@@ -8,13 +8,17 @@
 - [x] **M3 ROS 层**：LocalizationState/MapMeta/DynamicObstacle/Relocalize 消息、主节点、map_server、TF/QoS
 - [x] **M4 动态物体与重定位**：残差聚类发布、Relocalize 服务与状态机联动、允许动态区域
 - [ ] **M5 HIL 验证**：录包/仿真回放、ATE/RPE、DEGRADED/LOST 时序验证
+  - [x] **M5a 离车仿真闭环**：合成点云回放、真值里程计注入、ATE/RPE 评估、CI smoke（`docs/simulation.md`）
+  - [ ] **M5b Gazebo 联调**：官方 `rmu_gazebo_simulator` / `pb_rm_simulation` 场景接入
+  - [ ] **M5c 实车 bag 验证**：现场录包后复算阈值并写回 config
 - [ ] **M6 调参与交付**：2027 场地地图、阈值标定、运维文档、三兵种 launch 验收
 - [ ] **P2 可选**：ONNX Runtime CPU 全局重定位（默认 OFF）
 
 ## 当前 Agent State
 
-VERIFYING：6 个 package 已实现；colcon build 已通过（b9 回执），纯 C++ 单测本地通过；
-ROS 层 `colcon test` 依赖 RoboStack 环境，正在 `local/verify_all.sh` 单作业中复现。
+DELIVERED：7 个 package（新增 `foray_localization_sim`）。离车仿真闭环已落地：
+合成回放 → 定位节点 → `eval_trajectory.py` 断言 ATE/OK 占比，CI `sim-smoke` 覆盖。
+M5b（Gazebo 场景）/ M5c（实车 bag）仍待外部条件。
 
 ## Before Snapshot
 

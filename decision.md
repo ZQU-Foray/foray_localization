@@ -269,3 +269,36 @@ Alternatives:
 Rejected:
 - 默认启用会增加启动时间与误匹配面
 - 许可证与代码交付解耦，避免阻塞
+
+---
+
+## D11 仿真闭环放在本仓、但不引入 Gazebo 构建依赖
+
+Date: 2026-10-25
+
+Context: M5 HIL 验证需要录包/仿真回放与 ATE/RPE、DEGRADED/LOST 时序验证，
+但此时无实车、机载无 GPU，且官方 Gazebo 场景（`rmu_gazebo_simulator` /
+`pb_rm_simulation`）版本演进快。
+
+Decision:
+- 本仓只提供 `foray_localization_sim`（真值里程计注入 + 模式化 launch）
+  与 `foray_localization_tools` 的合成回放/评估脚本；Gazebo 场景与
+  Mid360 插件不入仓、不进构建依赖，按 `docs/simulation.md` 外部复现。
+- 合成闭环走「先验 PCD 射线投射 → 回放 + 定位节点 → `eval_trajectory.py`
+  断言 ATE/OK 占比」的路径，CI `sim-smoke` 作业无 GPU 可跑。
+- 仿真阈值单独放 `bringup/config/sim.yaml`，不参与默认实车启动。
+
+Reason:
+- `.foray-layer` 依赖方向与「定位层不感知数据来源」的接口约定均不破：
+  定位节点只认 `/livox/lidar`、`/aft_mapped_to_init`、TF。
+- Gazebo 进仓会把渲染/物理依赖带进定位层构建，与机载无 GPU 约束冲突。
+- 阈值只能初标：仿真点云无动态物体、无遮挡，且多为机械式扫描，
+  实车结论仍以 `docs/simulation.md` §5 的现场标定流程为准。
+
+Alternatives:
+- 把 Gazebo 场景与插件 vendor 进本仓
+- 只等实车，暂不做离车验证
+
+Rejected:
+- vendor 增加升级/审计成本，且与 `foray_ws` pin 策略冲突
+- 无实车期间没有任何可重复回归，M5 会长期空转

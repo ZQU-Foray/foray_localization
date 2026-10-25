@@ -100,19 +100,41 @@
 │   ├── CMakeLists.txt
 │   ├── package.xml
 │   ├── README.md
-│   └── scripts/
-│       ├── make_map.py            PCD → 2D PGM + manifest（同源投影）
-│       └── validate_map.py        字段/尺寸/相对路径/sha256 校验
+│   ├── scripts/
+│   │   ├── make_map.py            PCD → 2D PGM + manifest（同源投影）
+│   │   ├── validate_map.py        字段/尺寸/相对路径/sha256 校验
+│   │   ├── sim_common.py          纯 Python 几何/点云/射线投射/漂移模型
+│   │   ├── gen_demo_field.py      生成 12×8 场地合成 PCD
+│   │   ├── sim_replay.py          合成点云回放（ROS 话题 / 离线 dump）
+│   │   ├── eval_trajectory.py     ATE/RPE/OK 占比评估，超标 exit 1
+│   │   └── accumulate_pcd.py      按真值位姿累积点云建图
+│   └── test/
+│       ├── conftest.py            把 scripts/ 加入 sys.path
+│       ├── test_sim_common.py     几何/射线投射/漂移模型/ATE-RPE 单测
+│       ├── test_eval_trajectory.py 评估汇总与离线 CLI 退出码单测
+│       └── test_sim_assets.py     launch 语法、sim.yaml 键、注入器漂移单测
 │
-└── foray_localization_bringup/    三兵种装配
-    ├── CMakeLists.txt
-    ├── package.xml
-    ├── config/
-    │   ├── sentry.yaml
-    │   ├── infantry.yaml
-    │   └── heavy.yaml
-    └── launch/
-        └── localization.launch.py   由 config_name 选择兵种参数
+├── foray_localization_sim/       仿真验证（不含 Gazebo 依赖）
+│   ├── CMakeLists.txt
+│   ├── package.xml
+│   ├── scripts/
+│   │   └── sim_odom_injector.py   真值 → 漂移里程计，支持断流注入
+│   └── launch/
+│       └── sim_localization.launch.py  replay / gazebo / external 三模式
+│
+├── foray_localization_bringup/    三兵种装配
+│   ├── CMakeLists.txt
+│   ├── package.xml
+│   ├── config/
+│   │   ├── sentry.yaml
+│   │   ├── infantry.yaml
+│   │   ├── heavy.yaml
+│   │   └── sim.yaml               仿真专用阈值（不参与默认启动）
+│   └── launch/
+│       └── localization.launch.py   由 config_name 选择兵种参数
+│
+└── docs/
+    └── simulation.md             仿真数据源、Gazebo 复现、已知差异、标定流程
 ```
 
 ## 记录约束

@@ -27,6 +27,24 @@ ros2 launch foray_localization_bringup sentry.launch.py \
   map_manifest:=/path/to/map/manifest.yaml
 ```
 
+## 仿真验证（无实车）
+
+离车开发用两条数据源跑同一个定位节点，接口不变：
+
+```bash
+# 合成场地 + 回放 + 定位 + 评估（无 GPU）
+ros2 run foray_localization_tools gen_demo_field.py --output /tmp/sim/field.pcd
+ros2 run foray_localization_tools make_map.py --pcd /tmp/sim/field.pcd \
+  --output-dir /tmp/sim/map --version sim-demo --source synthetic
+ros2 launch foray_localization_sim sim_localization.launch.py \
+  map_manifest:=/tmp/sim/map/manifest.yaml mode:=replay duration:=40
+ros2 run foray_localization_tools eval_trajectory.py --duration 30 --json /tmp/sim/eval.json
+```
+
+Gazebo 场景（官方 `rmu_gazebo_simulator` / 北极熊 `pb_rm_simulation`）的话题映射、
+已知差异与阈值标定流程见 [`docs/simulation.md`](docs/simulation.md)。
+CI 的 `sim-smoke` 作业用同一套合成闭环断言 ATE 与 OK 占比。
+
 ## 定位方案
 
 内置**先验地图** + 激光配准；**赛时不跑在线 SLAM**。
@@ -62,6 +80,7 @@ MID360 点云 ──► point_lio（仅里程计）──► T_odom_lidar
 | `foray_localization_place` | 可选 ONNX Runtime（CPU）全局重定位，默认 OFF | 可选 |
 | `foray_localization_tools` | 建图、2D 投影、`validate_map`、`bench_lio` | 否（Python） |
 | `foray_localization_bringup` | 三兵种 launch / params | 是 |
+| `foray_localization_sim` | 仿真验证：真值里程计注入、合成/ Gazebo 启动入口，不含 Gazebo 依赖 | 是 |
 
 ## 接口
 
