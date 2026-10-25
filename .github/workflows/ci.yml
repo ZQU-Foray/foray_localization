@@ -171,3 +171,63 @@ jobs:
           source install/setup.bash
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
+
+  # ---- 仿真闭环 smoke（无 GPU）----
+  # 合成场地 -> 回放 + 定位节点 -> ATE/OK 占比断言。失败即红。
+  sim-smoke:
+    runs-on: ubuntu-22.04
+    container: ros:humble
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检测仿真包
+        id: detect
+        shell: bash
+        run: |
+          if [ -d foray_localization_sim ] && [ -f foray_localization_tools/scripts/sim_replay.py ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 安装依赖
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          apt-get update
+          rosdep update
+          rosdep install -y -r --from-paths . --ignore-src --rosdistro humble
+
+      - name: 构建
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+      - name: 合成闭环断言
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          set +e
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          mkdir -p /tmp/sim
+          ros2 run foray_localization_tools gen_demo_field.py \
+            --output /tmp/sim/field.pcd --spacing 0.04
+          ros2 run foray_localization_tools make_map.py \
+            --pcd /tmp/sim/field.pcd --output-dir /tmp/sim/map \
+            --version ci-sim --source synthetic
+          ros2 launch foray_localization_sim sim_localization.launch.py \
+            map_manifest:=/tmp/sim/map/manifest.yaml mode:=replay duration:=45 \
+            points:=6000 > /tmp/sim/launch.log 2>&1 &
+          LPID=$!
+          sleep 6
+          ros2 run foray_localization_tools eval_trajectory.py \
+            --duration 30 --json /tmp/sim/eval.json --max-ate 0.15
+          RC=$?
+          kill $LPID 2>/dev/null
+          sleep 2
+          cat /tmp/sim/eval.json 2>/dev/null
+          tail -30 /tmp/sim/launch.log
+          exit $RC
