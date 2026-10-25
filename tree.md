@@ -33,6 +33,8 @@
 ├── CODEOWNERS                     Review 自动分派
 ├── .foray-layer                   所属层与依赖边界（CI 校验）
 ├── .gitignore
+├── requirements.txt               CI `test-python` 依赖（pytest、PyYAML）
+├── pyproject.toml                 Python 工具配置（ruff/black，目标版本 3.10）
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                 组织 CI 模板（空仓绿灯，有包构建）

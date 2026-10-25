@@ -336,3 +336,28 @@ Alternatives:
 Rejected:
 - 平铺布局与组织约定冲突，后续每个仓都要写例外；
 - `place` 与 `_relocalization` 并存会造成跨仓命名漂移，越晚改越贵。
+
+## D13 Python 目标版本固定为 3.10
+
+Date: 2026-10-25
+
+Context: CI `test-python` 使用 `actions/setup-python` 的 3.10，与 ROS 2 humble 的
+系统 Python 一致。首次真实运行中，`ruff --fix` 的 `UP017` 把
+`datetime.timezone.utc` 改写成 `datetime.UTC`；后者是 Python 3.11 才引入的别名，
+在 3.10 上直接 `AttributeError`，而本地开发机是 3.14，测试全绿，问题只在 CI 暴露。
+
+Decision:
+- 仓根新增 `pyproject.toml`，写 `[tool.ruff] target-version = "py310"`；
+- 需要 UTC 时使用 `datetime.timezone.utc`，不得使用 `datetime.UTC`。
+
+Reason:
+- 让静态检查与自动修复也遵守运行时版本，而不是跟随开发机；
+- 目标版本显式声明比逐个违规加 `noqa` 可维护。
+
+Alternatives:
+- 只在违规行加 `# noqa: UP017`；
+- 把 CI 与运行时升到 3.11+。
+
+Rejected:
+- 逐行 `noqa` 无法阻止同类自动修复再次引入 3.11+ API；
+- ROS 2 humble 的官方支持版本是 3.10，升级不属于本仓决策范围。

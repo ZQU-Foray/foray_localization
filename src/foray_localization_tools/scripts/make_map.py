@@ -195,7 +195,7 @@ def main(argv=None):
         "source": args.source,
     }
     manifest["created_at"] = (
-        datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat()
+        datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
     )
     manifest_path = output_dir / "manifest.yaml"
     with open(manifest_path, "w", encoding="utf-8") as handle:
