@@ -254,7 +254,8 @@ Date: 2026-10-25
 
 Context: 用户要求计划考虑纯 CPU ONNX Runtime；许可证问题用户明确暂不考虑。
 
-Decision: `foray_localization_place` 用 ONNX Runtime CPU（`FORAY_WITH_ONNX=OFF` 默认），
+Decision: `foray_localization_place`（2026-10-25 更名为
+`foray_localization_relocalization`，见 D12）用 ONNX Runtime CPU（`FORAY_WITH_ONNX=OFF` 默认），
 不引入 CUDA/TensorRT EP；定位主链不依赖 ONNX。许可证决策移出本期，
 `package.xml` 的 `<license>` 暂保持 `TODO`，待组织统一。
 
@@ -302,3 +303,36 @@ Alternatives:
 Rejected:
 - vendor 增加升级/审计成本，且与 `foray_ws` pin 策略冲突
 - 无实车期间没有任何可重复回归，M5 会长期空转
+
+---
+
+## D12 包布局迁入 src/、重定位包更名
+
+Date: 2026-10-25
+
+Context: 组织统一「仓根 = colcon 空间根、全部包在 `src/`」的布局约定（`foray_docs`
+`repository_structure.md` §7.5 待登记），并要求核心包用 `_core`、角色后缀封闭词表。
+本仓 7 个包原先平铺在仓根，`foray_localization_place` 的后缀 `place` 不在词表内。
+
+Decision:
+- 7 个包全部迁入 `src/<package>/`，仓根不再有 `package.xml`；
+- `foray_localization_place` → `foray_localization_relocalization`，同步
+  `package.xml`、CMake `project`、命名空间 `foray::localization_relocalization`、
+  头文件目录 `include/foray/localization_relocalization/`、include guard；
+- 类名 `PlaceLocalizer` / `PlaceConfig` 与文件名保持（重定位手段仍是地点识别）；
+- CI 新增 `dir-layout` 作业，与 `foray_platform` 使用同一套规则。
+
+Reason:
+- 与组织布局约定一致，`colcon build` / `rosdep install --from-paths src` 语义清晰；
+- 「重定位」比「地点识别」更贴合对外语义（服务名已是 `Relocalize`），且 `place`
+  不在封闭后缀词表内；
+- 改名窗口只有现在：该包尚无下游消费方（已核对 `foray_localization_bringup`
+  不 `find_package` 它），成本最低。
+
+Alternatives:
+- 保持平铺布局，只在 `foray_docs` 登记差异；
+- 只迁 `src/`，不改包名。
+
+Rejected:
+- 平铺布局与组织约定冲突，后续每个仓都要写例外；
+- `place` 与 `_relocalization` 并存会造成跨仓命名漂移，越晚改越贵。

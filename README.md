@@ -16,9 +16,9 @@ git clone git@github.com:ZQU-Foray/foray_localization.git
 cd foray_localization
 
 # 2. 依赖安装（small_gicp 需按 foray_ws 的 pin 单独构建，见「依赖」）
-rosdep install -y -r --from-paths . --ignore-src --rosdistro humble
+rosdep install -y -r --from-paths src --ignore-src --rosdistro humble
 
-# 3. 构建
+# 3. 构建（仓根即 colcon 空间根，全部包在 src/ 下）
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 # 4. 运行（哨兵；步兵/重装见 bringup 的对应 launch）
@@ -70,17 +70,26 @@ MID360 点云 ──► point_lio（仅里程计）──► T_odom_lidar
 - **动态物体**：配准残差聚类，输出质心/尺寸/点数/置信度，**无类别标号**；
   与「地图过期」通过持续时间、允许动态区域标注区分。
 
+## 目录布局
+
+仓根**就是 colcon 空间根**，全部 ROS 2 包位于 `src/<package>/`，目录名与 `package.xml`
+的 `<name>` 一致；C++ 小工具放 `apps/`、资产放 `data/`，不得出现 `tools/`。
+完整骨架与命名后缀词表见 [`tree.md`](tree.md) 的「布局规则」「命名规则」，
+CI 的 `dir-layout` 作业按同一规则校验。
+
 ## Package 布局
+
+所有包均在 `src/` 下：
 
 | package | 职责 | 是否依赖 ROS |
 |---|---|---|
 | `foray_localization_core` | 位姿/健康状态机/位姿源仲裁/地图 manifest/几何，纯函数 | 否 |
 | `foray_localization_map` | PCD 先验地图、2D 栅格、GICP 后端、残差聚类 | 否 |
 | `foray_localization_ros` | 节点、TF、QoS、消息/服务、map_server、适配器 | 是 |
-| `foray_localization_place` | 可选 ONNX Runtime（CPU）全局重定位，默认 OFF | 可选 |
+| `foray_localization_relocalization` | 可选 ONNX Runtime（CPU）全局重定位（原 `_place`，已更名），默认 OFF | 可选 |
 | `foray_localization_tools` | 建图、2D 投影、`validate_map`、`bench_lio` | 否（Python） |
-| `foray_localization_bringup` | 三兵种 launch / params | 是 |
 | `foray_localization_sim` | 仿真验证：真值里程计注入、合成/ Gazebo 启动入口，不含 Gazebo 依赖 | 是 |
+| `foray_localization_bringup` | 三兵种 launch / params（`heavy.yaml` 为装甲兵种预留，2027 3v3 不使用） | 是 |
 
 ## 接口
 
@@ -181,7 +190,7 @@ source: "RMUL 2027 field survey"
 
 - `point_lio` 以独立进程运行，按 `foray_ws` 的 pin 构建；本仓只消费其话题。
 - `small_gicp` 未安装时自动回退到内置点到点 ICP（精度较低，仅用于调试/降级）。
-- `ONNX Runtime` 仅 `foray_localization_place` 使用，`FORAY_WITH_ONNX=ON` 时编译。
+- `ONNX Runtime` 仅 `foray_localization_relocalization` 使用，`FORAY_WITH_ONNX=ON` 时编译。
 
 ## 纪律
 
