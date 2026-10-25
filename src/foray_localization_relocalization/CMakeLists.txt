@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(foray_localization_place VERSION 0.1.0 LANGUAGES CXX)
+project(foray_localization_relocalization VERSION 0.1.0 LANGUAGES CXX)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -32,9 +32,9 @@ if(FORAY_WITH_ONNX)
     find_package(onnxruntime REQUIRED)
     target_link_libraries(${PROJECT_NAME} onnxruntime::onnxruntime)
     target_compile_definitions(${PROJECT_NAME} PUBLIC FORAY_WITH_ONNX=1)
-    message(STATUS "foray_localization_place: ONNX Runtime 已启用（纯 CPU）")
+    message(STATUS "foray_localization_relocalization: ONNX Runtime 已启用（纯 CPU）")
 else()
-    message(STATUS "foray_localization_place: ONNX 后端关闭（默认）")
+    message(STATUS "foray_localization_relocalization: ONNX 后端关闭（默认）")
 endif()
 
 if(BUILD_TESTING)

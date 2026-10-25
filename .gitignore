@@ -1,4 +1,4 @@
-# ---- 构建产物 ----
+# ---- 构建产物（仓根即 colcon 空间根，build/ install/ log/ 都在仓根）----
 build/
 install/
 log/
@@ -37,7 +37,7 @@ compile_commands.json
 *.mcap
 recordings/
 
-# ---- 本地参数覆盖（不得提交标定值） ----
+# ---- 本地参数覆盖与工具链（不得提交标定值；源码已迁入 src/，与这些目录不同层）----
 local/
 *.local.yaml
 

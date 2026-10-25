@@ -3,8 +3,8 @@
 // 可选的地点识别后端（D10）：默认关闭，纯 CPU ONNX Runtime。
 // 未编译 ONNX Runtime 时接口仍可链接，但 estimate() 明确返回不可用。
 
-#ifndef FORAY_LOCALIZATION_PLACE_PLACE_LOCALIZER_HPP_
-#define FORAY_LOCALIZATION_PLACE_PLACE_LOCALIZER_HPP_
+#ifndef FORAY_LOCALIZATION_RELOCALIZATION_PLACE_LOCALIZER_HPP_
+#define FORAY_LOCALIZATION_RELOCALIZATION_PLACE_LOCALIZER_HPP_
 
 #include "foray/localization_map/point_cloud.hpp"
 #include "foray/localization_map/prior_map.hpp"
@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace foray::localization_place {
+namespace foray::localization_relocalization {
 
 struct PlaceConfig {
     bool enabled{false};
@@ -52,6 +52,6 @@ class PlaceLocalizer {
     PlaceConfig config_;
 };
 
-} // namespace foray::localization_place
+} // namespace foray::localization_relocalization
 
-#endif // FORAY_LOCALIZATION_PLACE_PLACE_LOCALIZER_HPP_
+#endif // FORAY_LOCALIZATION_RELOCALIZATION_PLACE_LOCALIZER_HPP_

@@ -1,13 +1,13 @@
 // Copyright 2026 ZQU-Foray
 
-#include "foray/localization_place/place_localizer.hpp"
+#include "foray/localization_relocalization/place_localizer.hpp"
 
 #include <gtest/gtest.h>
 
 namespace {
 
 TEST(PlaceLocalizerTest, DisabledByDefault) {
-    foray::localization_place::PlaceLocalizer localizer;
+    foray::localization_relocalization::PlaceLocalizer localizer;
     foray::localization_map::PointCloud cloud;
     cloud.points.emplace_back(0.0F, 0.0F, 0.0F);
     foray::localization_map::PriorMap map;
@@ -19,10 +19,10 @@ TEST(PlaceLocalizerTest, DisabledByDefault) {
 }
 
 TEST(PlaceLocalizerTest, EnabledWithoutOnnxReportsUnavailable) {
-    foray::localization_place::PlaceConfig config;
+    foray::localization_relocalization::PlaceConfig config;
     config.enabled = true;
     config.model_path = "/nonexistent/model.onnx";
-    foray::localization_place::PlaceLocalizer localizer(config);
+    foray::localization_relocalization::PlaceLocalizer localizer(config);
 
     foray::localization_map::PointCloud cloud;
     cloud.points.emplace_back(0.0F, 0.0F, 0.0F);
@@ -35,9 +35,9 @@ TEST(PlaceLocalizerTest, EnabledWithoutOnnxReportsUnavailable) {
 }
 
 TEST(PlaceLocalizerTest, EmptyInputRejected) {
-    foray::localization_place::PlaceConfig config;
+    foray::localization_relocalization::PlaceConfig config;
     config.enabled = true;
-    foray::localization_place::PlaceLocalizer localizer(config);
+    foray::localization_relocalization::PlaceLocalizer localizer(config);
     foray::localization_map::PointCloud cloud;
     foray::localization_map::PriorMap map;
 

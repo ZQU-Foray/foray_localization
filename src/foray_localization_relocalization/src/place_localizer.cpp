@@ -1,6 +1,6 @@
 // Copyright 2026 ZQU-Foray
 
-#include "foray/localization_place/place_localizer.hpp"
+#include "foray/localization_relocalization/place_localizer.hpp"
 
 #include <utility>
 
@@ -8,7 +8,7 @@
 #include <onnxruntime_cxx_api.h>
 #endif
 
-namespace foray::localization_place {
+namespace foray::localization_relocalization {
 
 bool onnx_backend_available() {
 #if defined(FORAY_WITH_ONNX)
@@ -50,4 +50,4 @@ PlaceResult PlaceLocalizer::estimate(const foray::localization_map::PointCloud& 
 #endif
 }
 
-} // namespace foray::localization_place
+} // namespace foray::localization_relocalization
