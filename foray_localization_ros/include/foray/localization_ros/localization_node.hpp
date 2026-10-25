@@ -1,0 +1,114 @@
+// Copyright 2026 ZQU-Foray
+//
+// 定位主节点：地图配准、健康状态、TF map->odom、动态障碍与手动重定位。
+// 不直接访问任何硬件；输入是标准 ROS 话题（decision.md D7）。
+
+#ifndef FORAY_LOCALIZATION_ROS_LOCALIZATION_NODE_HPP_
+#define FORAY_LOCALIZATION_ROS_LOCALIZATION_NODE_HPP_
+
+#include "foray/localization/health.hpp"
+#include "foray/localization/pose.hpp"
+#include "foray/localization_map/icp_aligner.hpp"
+#include "foray/localization_map/prior_map.hpp"
+#include "foray/localization_map/residual_clusterer.hpp"
+#include "foray_localization_ros/msg/dynamic_obstacle_array.hpp"
+#include "foray_localization_ros/msg/localization_state.hpp"
+#include "foray_localization_ros/msg/map_meta.hpp"
+#include "foray_localization_ros/srv/relocalize.hpp"
+
+#include <Eigen/Geometry>
+
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
+
+#include <atomic>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <string>
+
+namespace foray::localization_ros {
+
+class LocalizationNode : public rclcpp::Node {
+  public:
+    explicit LocalizationNode(const rclcpp::NodeOptions& options);
+
+  private:
+    void on_cloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud);
+    void on_odometry(const nav_msgs::msg::Odometry::ConstSharedPtr odometry);
+    void on_external_pose(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose);
+    void on_state_timer();
+    void on_tf_timer();
+    void on_align_timer();
+    void on_obstacle_timer();
+    void
+    on_relocalize(const std::shared_ptr<foray_localization_ros::srv::Relocalize::Request> request,
+                  std::shared_ptr<foray_localization_ros::srv::Relocalize::Response> response);
+
+    void load_map();
+    void publish_state();
+    void update_health(const foray::localization_map::AlignResult& result, std::int64_t stamp_ns);
+    void publish_tf();
+
+    // 参数
+    std::string map_manifest_;
+    std::string map_frame_{"map"};
+    std::string odom_frame_{"odom"};
+    std::string base_frame_{"base_footprint"};
+    double voxel_leaf_m_{0.1};
+    double map_voxel_leaf_m_{0.25};
+    double residual_threshold_m_{0.3};
+    double cluster_tolerance_m_{0.3};
+    bool verify_map_hashes_{true};
+    std::string pose_source_param_{"auto"};
+
+    rclcpp::Publisher<foray_localization_ros::msg::LocalizationState>::SharedPtr state_pub_;
+    rclcpp::Publisher<foray_localization_ros::msg::MapMeta>::SharedPtr map_meta_pub_;
+    rclcpp::Publisher<foray_localization_ros::msg::DynamicObstacleArray>::SharedPtr obstacle_pub_;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
+        external_pose_sub_;
+    rclcpp::Service<foray_localization_ros::srv::Relocalize>::SharedPtr relocalize_srv_;
+
+    rclcpp::TimerBase::SharedPtr state_timer_;
+    rclcpp::TimerBase::SharedPtr tf_timer_;
+    rclcpp::TimerBase::SharedPtr align_timer_;
+    rclcpp::TimerBase::SharedPtr obstacle_timer_;
+
+    tf2_ros::Buffer tf_buffer_;
+    tf2_ros::TransformListener tf_listener_;
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+
+    foray::localization_map::PriorMap map_;
+    bool has_map_{false};
+    foray::localization_map::IcpAligner aligner_;
+    foray::localization_map::ResidualClusterer clusterer_;
+    foray::localization::HealthMonitor health_;
+    foray::localization::HealthConfig health_config_;
+    foray::localization::PoseSourcePolicy policy_{foray::localization::PoseSourcePolicy::kAuto};
+    foray::localization::PoseSource active_source_{foray::localization::PoseSource::kUnknown};
+
+    std::mutex mutex_;
+    foray::localization_map::PointCloud latest_cloud_;
+    std::int64_t latest_cloud_stamp_ns_{0};
+    bool has_cloud_{false};
+    Eigen::Isometry3d odom_to_base_{Eigen::Isometry3d::Identity()};
+    std::int64_t last_odom_ns_{0};
+    bool has_odom_{false};
+    Eigen::Isometry3d map_to_base_{Eigen::Isometry3d::Identity()};
+    Eigen::Isometry3d map_to_odom_{Eigen::Isometry3d::Identity()};
+    std::int64_t last_valid_ns_{0};
+    foray::localization::HealthStatus health_status_;
+    std::atomic<bool> relocalize_pending_{false};
+    Eigen::Isometry3d pending_map_to_base_{Eigen::Isometry3d::Identity()};
+};
+
+} // namespace foray::localization_ros
+
+#endif // FORAY_LOCALIZATION_ROS_LOCALIZATION_NODE_HPP_

@@ -1,0 +1,11 @@
+# 手动/半自动重定位。geometric 用给定初值做 GICP；place 走可选 ONNX 地点识别。
+
+uint8 MODE_GEOMETRIC=0
+uint8 MODE_PLACE=1
+
+# 初始位姿（map 坐标系）。mode=place 时可忽略。
+geometry_msgs/PoseWithCovariance initial_pose
+uint8 mode
+---
+bool accepted
+string message

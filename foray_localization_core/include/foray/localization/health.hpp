@@ -1,0 +1,90 @@
+// Copyright 2026 ZQU-Foray
+//
+// 定位健康状态机。安全关键：任何失效都必须显式进入 DEGRADED/LOST，
+// 不允许下游静默消费“看起来还在更新”的位姿。
+
+#ifndef FORAY_LOCALIZATION_HEALTH_HPP_
+#define FORAY_LOCALIZATION_HEALTH_HPP_
+
+#include "foray/localization/pose.hpp"
+
+#include <cstdint>
+#include <string>
+
+namespace foray::localization {
+
+/// 健康判定阈值。所有距离单位为米，时间单位为秒。
+/// 初值来自 2027 赛季 12 m x 8 m 场地 + MID360 的调试经验，
+/// 赛前必须用录包标定后写入 bringup 配置（见 decision.md D3/D9）。
+struct HealthConfig {
+    /// 进入 OK 的平均残差上限。
+    double ok_mean_residual_m{0.10};
+    /// DEGRADED 可接受的平均残差上限；超过即视为不可用。
+    double degraded_mean_residual_m{0.20};
+    /// 进入 OK 的内点率下限。
+    double ok_inlier_ratio{0.55};
+    /// DEGRADED 的内点率下限。
+    double degraded_inlier_ratio{0.35};
+    /// 无有效配准超过该时长进入 LOST。
+    double lost_timeout_sec{1.0};
+    /// 里程计断流超过该时长直接进入 LOST。
+    double odom_timeout_sec{0.5};
+    /// 从 INITIALIZING 进入 OK 所需的连续好帧数。
+    int warmup_frames{3};
+    /// 从 DEGRADED 恢复 OK 所需的连续好帧数。
+    int recover_frames{3};
+    /// 单帧残差/内点率越界后进入 DEGRADED 的保持时间（用于抑制抖动）。
+    double degraded_hold_sec{0.0};
+};
+
+/// 对外发布的状态快照。
+struct HealthStatus {
+    HealthState state{HealthState::kInitializing};
+    /// 0..1，越大越可信；LOST/INITIALIZING 为 0。
+    double confidence{0.0};
+    /// 距最近一次有效配准的秒数；从未有效时为 +inf。
+    double age_sec{0.0};
+    /// 当前状态已持续的秒数。
+    double state_age_sec{0.0};
+    /// 人类可读原因，写入日志与诊断。
+    std::string reason;
+};
+
+/// 有状态健康监视器。非线程安全，由节点在单线程内调用。
+class HealthMonitor {
+  public:
+    explicit HealthMonitor(HealthConfig config = {});
+
+    /// 输入最近一帧配准结果、当前时间与最近一次里程计时间。
+    /// `last_odom_ns == 0` 表示尚未收到里程计。
+    HealthStatus update(const RegistrationSample& sample, Timestamp now_ns, Timestamp last_odom_ns);
+
+    /// 显式重定位：回到 INITIALIZING，清空去抖计数。
+    void reset();
+
+    const HealthConfig& config() const { return config_; }
+    HealthState state() const { return state_; }
+
+  private:
+    void transition(HealthState next, const std::string& reason, Timestamp now_ns);
+    HealthStatus snapshot(Timestamp now_ns) const;
+    double compute_confidence(const RegistrationSample& sample) const;
+
+    HealthConfig config_;
+    HealthState state_{HealthState::kInitializing};
+    Timestamp state_since_ns_{0};
+    Timestamp start_ns_{0};
+    Timestamp last_valid_ns_{0};
+    Timestamp first_bad_ns_{0};
+    int good_frames_{0};
+    double last_confidence_{0.0};
+    std::string reason_{"waiting for first registration"};
+};
+
+/// 选择位姿源。`auto` 优先激光配准，无激光时回退外部位姿。
+PoseSource select_pose_source(PoseSourcePolicy policy, bool lidar_available,
+                              bool external_available);
+
+} // namespace foray::localization
+
+#endif // FORAY_LOCALIZATION_HEALTH_HPP_

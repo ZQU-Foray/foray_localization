@@ -2,27 +2,33 @@
 
 ## 任务列表
 
-- [ ] 接 `point_lio` → `loam_interface` → `sensor_scan_generation`，产出带置信度的位姿
-- [ ] 定义定位健康契约（位姿 / 置信度 / 新鲜度 / 失效标志）
-- [ ] 实现地图管理（2D+3D 同源 · 版本化 · 随赛季绑定）
-- [ ] 实现配准残差流水线（残差 → 聚类 → 动态物体）
-- [ ] 区分「地图过期」与「动态物体」
+- [x] **M0 骨架与文档**：6 个 package 目录/CMake/package.xml、CI 接入、README/tree/decision 对齐
+- [x] **M1 里程计与地图管线**：point_lio 话题接入、`build_map`/`validate_map`、manifest 格式冻结
+- [x] **M2 核心与配准**：健康状态机、位姿源仲裁、manifest 校验、GICP（PCL 后端 + ICP 兜底）、残差点
+- [x] **M3 ROS 层**：LocalizationState/MapMeta/DynamicObstacle/Relocalize 消息、主节点、map_server、TF/QoS
+- [x] **M4 动态物体与重定位**：残差聚类发布、Relocalize 服务与状态机联动、允许动态区域
+- [ ] **M5 HIL 验证**：录包/仿真回放、ATE/RPE、DEGRADED/LOST 时序验证
+- [ ] **M6 调参与交付**：2027 场地地图、阈值标定、运维文档、三兵种 launch 验收
+- [ ] **P2 可选**：ONNX Runtime CPU 全局重定位（默认 OFF）
 
 ## 当前 Agent State
 
-PLAN_READY
+VERIFYING：6 个 package 已实现；colcon build 已通过（b9 回执），纯 C++ 单测本地通过；
+ROS 层 `colcon test` 依赖 RoboStack 环境，正在 `local/verify_all.sh` 单作业中复现。
 
 ## Before Snapshot
 
 commit hash:   （首次提交）
-branch:        main
-modified files: （首次初始化）
+branch:        dev
+modified files: 6 个 package 新文件（见 git status）
 risk level:    L1
 
 ## 模糊点与待确认项
 
-- 本仓接口尚未冻结，任务清单为**方向性**的，落地顺序以 `foray_docs/algorithm_structure.md` §9 演进阶段为准
-- 依赖的自研仓尚未建齐，跨仓任务需等对方 `README.md` 明确接口后再启动
+- `foray_interfaces` 的 0.2.0 消息尚未落地；首版消息暂放 `foray_localization_ros`，迁移计划见 `decision.md` D8
+- `small_gicp` 尚未在 `foray_ws` pin；首版用 PCL GICP + 内置 ICP 兜底，见 `decision.md` D9
+- 2027 场地地图需赛前场地窗口实测；当前以仿真/录包验证（M5 未完成）
+- 自动全局重定位（ONNX）为 P2，默认关闭；许可证决策不在本期范围
 
 ## Vector Backend Status
 
@@ -38,3 +44,9 @@ Commit: （首次提交）
 - [ ] 本仓能独立 `colcon build`（无代码时跳过）
 - [ ] CI 绿灯
 - [ ] 每个新增模块带独立可执行测试
+- [ ] 录包/仿真回放 ATE ≤ 5 cm、航向 ≤ 2°（相对起点）
+- [ ] 定位初始化 ≤ 5 s；`LocalizationState` ≥ 50 Hz；GICP 5 Hz 且 p99 ≤ 40 ms
+- [ ] 配准失效 ≤ 200 ms 输出 `DEGRADED`、≤ 1 s 输出 `LOST`，无静默外推
+- [ ] 同源地图 2D/3D 一致率 ≥ 95%，manifest 强校验
+- [ ] 动态物体检出率 ≥ 90%（标注集）
+- [ ] 三兵种 launch 可分别启动，参数错误有明确报错

@@ -40,3 +40,6 @@ recordings/
 # ---- 本地参数覆盖（不得提交标定值） ----
 local/
 *.local.yaml
+
+# ---- 工具状态 ----
+.dsh/
