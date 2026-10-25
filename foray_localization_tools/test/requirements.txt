@@ -1,0 +1,2 @@
+# 纯 Python 测试依赖（不进入 ROS 构建）：python3 -m pip install -r test/requirements.txt
+pytest>=7.0

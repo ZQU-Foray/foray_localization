@@ -31,3 +31,24 @@ python3 scripts/validate_map.py /path/to/map_dir/manifest.yaml
 
 校验必填字段、`frame_id == map`、分辨率范围、相对路径、栅格尺寸与 SHA-256。
 CI 与上机前都应运行；失败返回非零退出码。
+
+## 仿真闭环与评估
+
+`gen_demo_field.py` → `make_map.py` → `sim_replay.py --dump-dir` →
+`accumulate_pcd.py` → `make_map.py` 可离线复现整条链路，详见
+[`docs/simulation.md`](../docs/simulation.md)。
+
+- `sim_common.py`：纯 Python 几何、PCD 读写、射线投射、漂移模型、ATE/RPE；
+- `sim_replay.py`：`--ros` 发话题，`--dump-dir` 写离线数据；
+- `eval_trajectory.py`：ATE/RPE/OK 占比/状态迁移，超阈值 `exit 1`；
+- `accumulate_pcd.py`：按真值位姿累积点云建图。
+
+## 测试
+
+```bash
+python3 -m pip install -r test/requirements.txt
+python3 -m pytest test -q
+```
+
+测试只用 pytest，不需要 ROS 运行时；`conftest.py` 负责把 `scripts/` 与
+`foray_localization_sim/scripts/` 加入 `sys.path`。
