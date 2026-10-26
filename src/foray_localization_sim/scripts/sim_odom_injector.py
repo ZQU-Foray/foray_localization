@@ -30,7 +30,9 @@ class OdomDrift:
         self.yaw_drift = math.radians(
             node.declare_parameter("yaw_drift_deg_per_m", 0.8).value
         )
-        self.yaw_noise = math.radians(node.declare_parameter("yaw_noise_deg", 0.05).value)
+        self.yaw_noise = math.radians(
+            node.declare_parameter("yaw_noise_deg", 0.05).value
+        )
         self.pos_noise = node.declare_parameter("pos_noise_m", 0.005).value
         self.rng = random.Random(node.declare_parameter("seed", 0).value)
         self.last = None

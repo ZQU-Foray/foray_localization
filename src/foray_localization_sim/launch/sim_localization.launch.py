@@ -12,7 +12,11 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch.substitutions import (
+    LaunchConfiguration,
+    PathJoinSubstitution,
+    PythonExpression,
+)
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -27,14 +31,22 @@ def generate_launch_description():
         name="sim_replay",
         output="screen",
         arguments=[
-            "--manifest", map_manifest,
-            "--duration", LaunchConfiguration("duration"),
-            "--points", LaunchConfiguration("points"),
-            "--seed", LaunchConfiguration("seed"),
-            "--cloud-rate", LaunchConfiguration("cloud_rate"),
-            "--odom-rate", LaunchConfiguration("odom_rate"),
-            "--drop-odom-after", LaunchConfiguration("drop_odom_after"),
-            "--drop-odom-duration", LaunchConfiguration("drop_odom_duration"),
+            "--manifest",
+            map_manifest,
+            "--duration",
+            LaunchConfiguration("duration"),
+            "--points",
+            LaunchConfiguration("points"),
+            "--seed",
+            LaunchConfiguration("seed"),
+            "--cloud-rate",
+            LaunchConfiguration("cloud_rate"),
+            "--odom-rate",
+            LaunchConfiguration("odom_rate"),
+            "--drop-odom-after",
+            LaunchConfiguration("drop_odom_after"),
+            "--drop-odom-duration",
+            LaunchConfiguration("drop_odom_duration"),
             "--ros",
         ],
         condition=IfCondition(PythonExpression(["'", mode, "' == 'replay'"])),
@@ -45,14 +57,16 @@ def generate_launch_description():
         executable="sim_odom_injector.py",
         name="sim_odom_injector",
         output="screen",
-        parameters=[{
-            "gt_topic": LaunchConfiguration("gt_topic"),
-            "odom_topic": "/aft_mapped_to_init",
-            "scale_error": LaunchConfiguration("scale_error"),
-            "yaw_drift_deg_per_m": LaunchConfiguration("yaw_drift_deg_per_m"),
-            "drop_after_sec": LaunchConfiguration("drop_odom_after"),
-            "drop_duration_sec": LaunchConfiguration("drop_odom_duration"),
-        }],
+        parameters=[
+            {
+                "gt_topic": LaunchConfiguration("gt_topic"),
+                "odom_topic": "/aft_mapped_to_init",
+                "scale_error": LaunchConfiguration("scale_error"),
+                "yaw_drift_deg_per_m": LaunchConfiguration("yaw_drift_deg_per_m"),
+                "drop_after_sec": LaunchConfiguration("drop_odom_after"),
+                "drop_duration_sec": LaunchConfiguration("drop_odom_duration"),
+            }
+        ],
         condition=IfCondition(PythonExpression(["'", mode, "' == 'gazebo'"])),
     )
 
@@ -62,9 +76,12 @@ def generate_launch_description():
         name="eval_trajectory",
         output="screen",
         arguments=[
-            "--duration", LaunchConfiguration("eval_duration"),
-            "--json", LaunchConfiguration("eval_json"),
-            "--max-ate", LaunchConfiguration("max_ate"),
+            "--duration",
+            LaunchConfiguration("eval_duration"),
+            "--json",
+            LaunchConfiguration("eval_json"),
+            "--max-ate",
+            LaunchConfiguration("max_ate"),
         ],
         condition=IfCondition(LaunchConfiguration("evaluate")),
     )
@@ -73,7 +90,8 @@ def generate_launch_description():
         [
             DeclareLaunchArgument("map_manifest", description="先验地图 manifest.yaml"),
             DeclareLaunchArgument(
-                "mode", default_value="replay",
+                "mode",
+                default_value="replay",
                 description="replay / gazebo / external",
             ),
             DeclareLaunchArgument("duration", default_value="60.0"),
@@ -88,14 +106,19 @@ def generate_launch_description():
             DeclareLaunchArgument("yaw_drift_deg_per_m", default_value="0.8"),
             DeclareLaunchArgument("evaluate", default_value="false"),
             DeclareLaunchArgument("eval_duration", default_value="30.0"),
-            DeclareLaunchArgument("eval_json", default_value="/tmp/foray_sim_eval.json"),
+            DeclareLaunchArgument(
+                "eval_json", default_value="/tmp/foray_sim_eval.json"
+            ),
             DeclareLaunchArgument("max_ate", default_value="0.15"),
             LogInfo(msg=["定位仿真启动，mode=", mode]),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution(
-                        [FindPackageShare("foray_localization_bringup"),
-                         "launch", "localization.launch.py"]
+                        [
+                            FindPackageShare("foray_localization_bringup"),
+                            "launch",
+                            "localization.launch.py",
+                        ]
                     )
                 ),
                 launch_arguments={

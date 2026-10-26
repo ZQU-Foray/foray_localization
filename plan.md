@@ -15,6 +15,9 @@
 - [x] **M7 布局与命名规范化**：7 个包迁入 `src/`（仓根即 colcon 空间根）、
   `foray_localization_place` → `foray_localization_relocalization`、CI `dir-layout` 作业、
   文档与配置同步（见 `decision.md` D12）
+  - [x] **M7a CI 首次真实运行修复**：补仓根 `requirements.txt`（test-python 缺 PyYAML）、
+    清 ruff / clang-format 违规、脚本记录 100755、`pyproject.toml` 固定 Python 3.10
+    （见 `decision.md` D13）
 - [ ] **P2 可选**：ONNX Runtime CPU 全局重定位（默认 OFF）
 
 ## 当前 Agent State

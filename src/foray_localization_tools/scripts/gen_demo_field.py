@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from sim_common import make_demo_field  # noqa: E402
+from sim_common import make_demo_field
 
 
 def main(argv=None):

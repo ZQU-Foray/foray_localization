@@ -3,7 +3,6 @@
 import math
 
 import pytest
-
 import sim_common as sim
 
 
@@ -55,16 +54,23 @@ def test_range_image_and_raycast():
             points.append((5.0 * math.cos(angle), 5.0 * math.sin(angle), z))
     image = sim.RangeImage(points)
     rng = sim.random.Random(0)
-    cloud = sim.raycast(image, sim.pose_from_xy_yaw(0.0, 0.0, 0.0), 300, rng,
-                        noise_sigma=0.0, dropout=0.0)
+    cloud = sim.raycast(
+        image,
+        sim.pose_from_xy_yaw(0.0, 0.0, 0.0),
+        300,
+        rng,
+        noise_sigma=0.0,
+        dropout=0.0,
+    )
     assert len(cloud) > 80
     for x, y, _ in cloud[:50]:
         assert math.hypot(x, y) == pytest.approx(5.0, abs=0.5)
 
 
 def test_drift_model_zero_error_is_identity():
-    drift = sim.DriftModel(scale_error=0.0, yaw_drift_deg_per_m=0.0,
-                           yaw_noise_deg=0.0, pos_noise=0.0)
+    drift = sim.DriftModel(
+        scale_error=0.0, yaw_drift_deg_per_m=0.0, yaw_noise_deg=0.0, pos_noise=0.0
+    )
     true_pose = sim.pose_from_xy_yaw(0.0, 0.0, 0.0)
     drift.update(true_pose)
     for i in range(1, 5):
@@ -77,8 +83,9 @@ def test_drift_model_zero_error_is_identity():
 
 
 def test_drift_model_scale_error_accumulates():
-    drift = sim.DriftModel(scale_error=0.1, yaw_drift_deg_per_m=0.0,
-                           yaw_noise_deg=0.0, pos_noise=0.0)
+    drift = sim.DriftModel(
+        scale_error=0.1, yaw_drift_deg_per_m=0.0, yaw_noise_deg=0.0, pos_noise=0.0
+    )
     drift.update(sim.pose_from_xy_yaw(0.0, 0.0, 0.0))
     for i in range(1, 11):
         odom = drift.update(sim.pose_from_xy_yaw(0.1 * i, 0.0, 0.0))

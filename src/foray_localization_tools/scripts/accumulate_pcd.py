@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from sim_common import read_pcd, write_pcd  # noqa: E402
+from sim_common import read_pcd, write_pcd
 
 
 def read_poses(path):
@@ -44,9 +44,9 @@ def accumulate(scans, poses, voxel):
             wy = y + sy * px + cy * py
             wz = z + pz
             key = (
-                int(math.floor(wx / voxel)),
-                int(math.floor(wy / voxel)),
-                int(math.floor(wz / voxel)),
+                math.floor(wx / voxel),
+                math.floor(wy / voxel),
+                math.floor(wz / voxel),
             )
             if key not in merged:
                 cell = (key[0] * voxel, key[1] * voxel, key[2] * voxel)

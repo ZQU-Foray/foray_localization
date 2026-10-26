@@ -34,15 +34,17 @@ def test_launch_python_syntax(relative):
 
 def test_sim_config_has_required_params():
     data = yaml.safe_load(
-        (ROOT / "foray_localization_bringup/config/sim.yaml").read_text(encoding="utf-8")
+        (ROOT / "foray_localization_bringup/config/sim.yaml").read_text(
+            encoding="utf-8"
+        )
     )
     params = data["foray_localization"]["ros__parameters"]
     missing = REQUIRED_SIM_PARAMS - set(params)
     assert not missing, f"sim.yaml 缺少参数: {sorted(missing)}"
     assert params["odom_timeout_sec"] < params["lost_timeout_sec"]
-    launch = (ROOT / "foray_localization_sim/launch/sim_localization.launch.py").read_text(
-        encoding="utf-8"
-    )
+    launch = (
+        ROOT / "foray_localization_sim/launch/sim_localization.launch.py"
+    ).read_text(encoding="utf-8")
     assert "map_manifest" in launch
 
 
