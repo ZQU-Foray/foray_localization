@@ -52,10 +52,9 @@ def test_range_image_and_raycast():
         for k in range(21):
             z = -2.0 + 0.2 * k
             points.append((5.0 * math.cos(angle), 5.0 * math.sin(angle), z))
-    image = sim.RangeImage(points)
     rng = sim.random.Random(0)
     cloud = sim.raycast(
-        image,
+        points,
         sim.pose_from_xy_yaw(0.0, 0.0, 0.0),
         300,
         rng,
@@ -65,6 +64,55 @@ def test_range_image_and_raycast():
     assert len(cloud) > 80
     for x, y, _ in cloud[:50]:
         assert math.hypot(x, y) == pytest.approx(5.0, abs=0.5)
+
+
+def test_world_to_sensor_roundtrip():
+    pose = sim.pose_from_xy_yaw(2.0, -1.0, 0.6)
+    world = [(1.0, 2.0, 0.3), (-4.0, 0.5, -0.2)]
+    sensor = sim.world_to_sensor(world, pose)
+    assert len(sensor) == len(world)
+    for src, (x, y, z) in zip(world, sensor):
+        back = (
+            pose[0][0] * x + pose[0][1] * y + pose[0][2] * z + pose[0][3],
+            pose[1][0] * x + pose[1][1] * y + pose[1][2] * z + pose[1][3],
+            pose[2][0] * x + pose[2][1] * y + pose[2][2] * z + pose[2][3],
+        )
+        for got, want in zip(back, src):
+            assert got == pytest.approx(want, abs=1e-9)
+
+
+def test_raycast_follows_sensor_pose():
+    # 半径 5 m 的圆柱面：传感器在原点看到 5 m；沿 +x 前进 2 m 后
+    # 正前方应是 3 m、正后方应是 7 m，点云必须随位姿变化。
+    points = []
+    for i in range(720):
+        angle = 2.0 * math.pi * i / 720.0
+        for k in range(21):
+            z = -2.0 + 0.2 * k
+            points.append((5.0 * math.cos(angle), 5.0 * math.sin(angle), z))
+    home = sim.raycast(
+        points,
+        sim.pose_from_xy_yaw(0.0, 0.0, 0.0),
+        600,
+        sim.random.Random(3),
+        noise_sigma=0.0,
+        dropout=0.0,
+    )
+    moved = sim.raycast(
+        points,
+        sim.pose_from_xy_yaw(2.0, 0.0, 0.0),
+        600,
+        sim.random.Random(3),
+        noise_sigma=0.0,
+        dropout=0.0,
+    )
+    assert home and moved
+    home_ranges = [math.sqrt(x * x + y * y + z * z) for x, y, z in home]
+    moved_ranges = [math.sqrt(x * x + y * y + z * z) for x, y, z in moved]
+    assert min(home_ranges) == pytest.approx(5.0, abs=0.5)
+    assert max(home_ranges) == pytest.approx(5.0, abs=0.5)
+    assert min(moved_ranges) == pytest.approx(3.0, abs=0.5)
+    assert max(moved_ranges) == pytest.approx(7.0, abs=0.5)
 
 
 def test_drift_model_zero_error_is_identity():

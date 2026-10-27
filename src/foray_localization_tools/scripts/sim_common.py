@@ -192,8 +192,29 @@ def read_manifest(path):
     return yaml.safe_load(pathlib.Path(path).read_text(encoding="utf-8"))
 
 
+def world_to_sensor(world_points, sensor_pose):
+    """把 map 系点云变换到传感器系（sensor_pose 为 map→传感器的位姿矩阵）。"""
+    inv = invert_transform(sensor_pose)
+    r00, r01, r02, tx = inv[0]
+    r10, r11, r12, ty = inv[1]
+    r20, r21, r22, tz = inv[2]
+    return [
+        (
+            r00 * x + r01 * y + r02 * z + tx,
+            r10 * x + r11 * y + r12 * z + ty,
+            r20 * x + r21 * y + r22 * z + tz,
+        )
+        for x, y, z in world_points
+    ]
+
+
 class RangeImage:
-    """把先验点云压成方向-距离图，用于快速射线投射。"""
+    """把传感器系点云压成方向-距离图，用于快速射线投射。
+
+    输入点必须已经变换到传感器系（原点即激光光心），距离按传感器到点的
+    欧氏距离统计；map 系点云需先用 :func:`world_to_sensor` 变换，否则方向
+    与距离都会以场地中心为原点，与传感器真实位姿无关。
+    """
 
     def __init__(self, points, az_bins=AZ_BINS, el_bins=EL_BINS):
         self.az_bins = az_bins
@@ -225,6 +246,30 @@ class RangeImage:
             return math.inf
         return self.ranges[ie * self.az_bins + ia]
 
+    def nearest_range(self, azimuth, elevation, window=1):
+        """返回该方向 ±window 个方位/俯仰格内的最近距离。
+
+        合成地图点云稀疏时，随机采样方向经常落在空格子上；在邻域内取
+        最小距离相当于给激光一个与扫描线宽相当的容差，避免整帧点云为空。
+        """
+        ia = int((azimuth + math.pi) / (2.0 * math.pi) * self.az_bins) % self.az_bins
+        ie = int(
+            (math.degrees(elevation) - EL_MIN_DEG)
+            / (EL_MAX_DEG - EL_MIN_DEG)
+            * self.el_bins
+        )
+        best = math.inf
+        for de in range(-window, window + 1):
+            row = ie + de
+            if row < 0 or row >= self.el_bins:
+                continue
+            base = row * self.az_bins
+            for da in range(-window, window + 1):
+                dist = self.ranges[base + (ia + da) % self.az_bins]
+                if dist < best:
+                    best = dist
+        return best
+
 
 def sample_ray_directions(count, rng):
     """模拟 MID360 非重复扫描：方位角均匀、俯仰角偏向低仰角。"""
@@ -237,13 +282,16 @@ def sample_ray_directions(count, rng):
     return directions
 
 
-def raycast(range_image, pose, count, rng, noise_sigma=0.02, dropout=0.02):
-    """在 pose（map 系 base）下生成 livox_frame 点云。"""
-    rot = [[pose[j][i] for j in range(3)] for i in range(3)]
-    trans = (pose[0][3], pose[1][3], pose[2][3])
+def raycast(world_points, pose, count, rng, noise_sigma=0.02, dropout=0.02):
+    """在 pose（map 系传感器位姿）下，用 map 系点云生成 livox_frame 点云。
+
+    射线方向在传感器系采样，命中距离取传感器系方向-距离图上的最近距离，
+    输出点 = 距离 × 单位方向，因此在传感器系内表达、随 pose 正确变化。
+    """
+    image = RangeImage(world_to_sensor(world_points, pose))
     cloud = []
     for azimuth, elevation in sample_ray_directions(count, rng):
-        distance = range_image.range_at(azimuth, elevation)
+        distance = image.nearest_range(azimuth, elevation)
         if not math.isfinite(distance):
             continue
         distance += rng.gauss(0.0, noise_sigma)
@@ -253,19 +301,7 @@ def raycast(range_image, pose, count, rng, noise_sigma=0.02, dropout=0.02):
             continue
         ce, se = math.cos(elevation), math.sin(elevation)
         ca, sa = math.cos(azimuth), math.sin(azimuth)
-        dx, dy, dz = ce * ca, ce * sa, se
-        # 世界点 = R * 传感器点 + t；传感器点 = R^T * (世界点 - t)
-        wx = trans[0] + distance * (rot[0][0] * dx + rot[0][1] * dy + rot[0][2] * dz)
-        wy = trans[1] + distance * (rot[1][0] * dx + rot[1][1] * dy + rot[1][2] * dz)
-        wz = trans[2] + distance * (rot[2][0] * dx + rot[2][1] * dy + rot[2][2] * dz)
-        px, py, pz = wx - trans[0], wy - trans[1], wz - trans[2]
-        cloud.append(
-            (
-                rot[0][0] * px + rot[1][0] * py + rot[2][0] * pz,
-                rot[0][1] * px + rot[1][1] * py + rot[2][1] * pz,
-                rot[0][2] * px + rot[1][2] * py + rot[2][2] * pz,
-            )
-        )
+        cloud.append((distance * ce * ca, distance * ce * sa, distance * se))
     return cloud
 
 

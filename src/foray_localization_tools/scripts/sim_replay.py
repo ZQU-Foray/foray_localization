@@ -22,7 +22,6 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from sim_common import (
     DriftModel,
-    RangeImage,
     Trajectory,
     make_transform,
     quaternion_from_yaw,
@@ -50,7 +49,6 @@ def dump_offline(args, world, trajectory):
     drift = DriftModel(seed=args.seed)
     out = pathlib.Path(args.dump_dir)
     (out / "scans").mkdir(parents=True, exist_ok=True)
-    range_image = RangeImage(world)
     ticks = int(args.duration * args.odom_rate)
     with open(out / "poses.csv", "w", newline="", encoding="utf-8") as poses, open(
         out / "odom.csv", "w", newline="", encoding="utf-8"
@@ -78,7 +76,7 @@ def dump_offline(args, world, trajectory):
                 next_cloud += 1.0 / args.cloud_rate
                 lidar_pose = transform_pose(true_pose, BASE_TO_LIDAR)
                 cloud = raycast(
-                    range_image, lidar_pose, args.points, rng, noise_sigma=args.noise
+                    world, lidar_pose, args.points, rng, noise_sigma=args.noise
                 )
                 write_pcd(out / "scans" / f"cloud_{t:.6f}.pcd", cloud)
     print(f"离线数据已写入 {out}（{ticks + 1} 个位姿采样）")
@@ -118,7 +116,6 @@ def run_ros(args, world, trajectory):
 
     rng = random.Random(args.seed)
     drift = DriftModel(seed=args.seed)
-    range_image = RangeImage(world)
     state = {"tick": 0, "next_cloud": 0.0, "start": time.monotonic()}
 
     def make_odometry(header_frame, child, pose, stamp_msg):
@@ -153,7 +150,7 @@ def run_ros(args, world, trajectory):
             state["next_cloud"] += 1.0 / args.cloud_rate
             lidar_pose = transform_pose(true_pose, BASE_TO_LIDAR)
             cloud = raycast(
-                range_image, lidar_pose, args.points, rng, noise_sigma=args.noise
+                world, lidar_pose, args.points, rng, noise_sigma=args.noise
             )
             header = Header()
             header.stamp = stamp_msg
