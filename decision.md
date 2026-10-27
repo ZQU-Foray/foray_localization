@@ -520,6 +520,11 @@ Decision:
   （行尾空白 / CRLF / 末尾双空行 / 非法 UTF-8 / msg 字段改名 / README 默认值被改 /
   未记录的被跟踪文件），断言对应门禁真的非零退出，再断言恢复后全部复绿且 `git status`
   无残留。门禁必须能被证明「在坏输入上失败」，否则无法排除它已被改坏。
+- 新增 `.gitattributes`（`* text=auto eol=lf` + 二进制后缀列表）：`check_style.py`
+  断言 LF，就必须同时在**检出侧**保证 LF。只在检查侧强制，Windows 开发者会看到
+  「自己没改过却报红」的 CRLF——文件在 git 里是 LF，工作区却是 CRLF。门禁一旦开始
+  误报就会被当成噪音绕过，那还不如不装。二进制后缀列表与 `check_style.py` 的
+  `BINARY_SUFFIXES` 一一对应，两处改动必须同步。
 - 自检文件命名为 `test_guards.py` 并保持可被 `pytest` 直接收集；自跑（不经 pytest）时
   末尾打印 `[==========] N tests from N test suites ran.` 汇总行。理由：DSH 任务引擎与
   部分 CI 适配器只从 gtest / pytest / ctest 等已知运行器的输出里判定「确实跑了 N 个用例」，

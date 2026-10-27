@@ -34,6 +34,7 @@
 ├── .foray-layer                   所属层与依赖边界（CI 校验）
 ├── .gitignore
 ├── .clang-format                  C/C++ 格式基线，CI `lint-c` 依此校验
+├── .gitattributes                 检出侧强制 LF，与 check_style.py 的 LF 断言配套
 ├── pyproject.toml                 Python 配置（ruff/black，目标版本 3.10；仅 bringup launch 使用）
 ├── contracts.sha256               msg/srv/action 接口指纹快照，CI `contract-lock` 依此校验
 ├── .github/
