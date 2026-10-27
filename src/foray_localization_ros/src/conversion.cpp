@@ -79,6 +79,10 @@ LocalizationStateMsg to_msg_state(const foray::localization::HealthStatus& healt
     message.header.frame_id = pose.parent_frame;
     message.pose.pose = to_msg_pose(pose.transform);
     message.pose.covariance.fill(0.0);
+    // 只有 OK/DEGRADED 的 pose 可被下游消费；INITIALIZING 还没完成热启动、LOST 已停更
+    // map->odom，两者的 pose 都只是诊断值（审计 B2：禁止静默外推）。
+    message.pose_valid = health.state == foray::localization::HealthState::kOk ||
+                         health.state == foray::localization::HealthState::kDegraded;
     message.confidence = health.confidence;
     message.age_sec = health.age_sec;
     message.state = to_msg_state(health.state);

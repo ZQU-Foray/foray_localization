@@ -34,12 +34,41 @@ TEST(ConversionTest, StateCarriesHealthAndPose) {
     const auto message = to_msg_state(health, pose, PoseSource::kSentryLidar, 1500000000LL);
     EXPECT_EQ(message.state, message.STATE_DEGRADED);
     EXPECT_EQ(message.source, message.SOURCE_SENTRY_LIDAR);
+    EXPECT_TRUE(message.pose_valid);
     EXPECT_DOUBLE_EQ(message.confidence, 0.42);
     EXPECT_EQ(message.header.frame_id, "map");
     EXPECT_EQ(message.header.stamp.sec, 1);
     EXPECT_EQ(message.header.stamp.nanosec, 500000000U);
     EXPECT_DOUBLE_EQ(message.pose.pose.position.x, 1.0);
     EXPECT_EQ(message.reason, "残差偏大");
+}
+
+TEST(ConversionTest, PoseValidFollowsHealthState) {
+    // 审计 B2：只有完成校正的状态才允许下游消费 pose。
+    struct Case {
+        HealthState state;
+        bool expected_valid;
+    };
+    const Case cases[] = {
+        {HealthState::kInitializing, false},
+        {HealthState::kOk, true},
+        {HealthState::kDegraded, true},
+        {HealthState::kLost, false},
+    };
+
+    Pose3D pose;
+    pose.parent_frame = "map";
+    pose.child_frame = "base_footprint";
+    pose.transform = Eigen::Isometry3d::Identity();
+
+    for (const auto& item : cases) {
+        HealthStatus health;
+        health.state = item.state;
+        health.reason = foray::localization::to_string(item.state);
+
+        const auto message = to_msg_state(health, pose, PoseSource::kSentryLidar, 1000000000LL);
+        EXPECT_EQ(message.pose_valid, item.expected_valid) << "state=" << message.state;
+    }
 }
 
 TEST(ConversionTest, PoseRoundTrip) {
