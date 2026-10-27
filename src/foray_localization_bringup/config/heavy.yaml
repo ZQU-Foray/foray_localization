@@ -34,5 +34,6 @@ foray_localization:
     degraded_inlier_ratio: 0.32
     lost_timeout_sec: 1.0
     odom_timeout_sec: 0.5
+    lidar_timeout_sec: 0.2
     warmup_frames: 3
     recover_frames: 3

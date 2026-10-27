@@ -97,6 +97,8 @@ class LocalizationNode : public rclcpp::Node {
     std::mutex mutex_;
     foray::localization_map::PointCloud latest_cloud_;
     std::int64_t latest_cloud_stamp_ns_{0};
+    /// 最近一帧点云的节点接收时刻（ns）。用于判定激光断流，避免依赖消息时间戳。
+    std::int64_t last_cloud_rx_ns_{0};
     bool has_cloud_{false};
     Eigen::Isometry3d odom_to_base_{Eigen::Isometry3d::Identity()};
     std::int64_t last_odom_ns_{0};
