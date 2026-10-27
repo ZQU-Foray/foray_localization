@@ -100,6 +100,28 @@ TEST(HealthMonitor, OdomTimeoutIsLost) {
     EXPECT_EQ(status.reason, "odometry timeout");
 }
 
+TEST(HealthMonitor, SmallTimestampInversionIsTolerated) {
+    HealthMonitor monitor(test_config());
+    const Timestamp start = kSecond;
+    // 里程计时间戳比评估时间新 20 ms（小于 200 ms 容差）：不应误判为断流。
+    EXPECT_EQ(monitor.update(make_sample(start), start, start + kSecond / 50).state,
+              HealthState::kInitializing);
+    EXPECT_EQ(monitor
+                  .update(make_sample(start + kSecond / 10), start + kSecond / 10,
+                          start + kSecond / 10 + kSecond / 50)
+                  .state,
+              HealthState::kOk);
+}
+
+TEST(HealthMonitor, LargeTimestampInversionStillTimesOut) {
+    HealthMonitor monitor(test_config());
+    const Timestamp start = kSecond;
+    // 反序 500 ms 超出容差，仍按时间基准异常处理。
+    const HealthStatus status = monitor.update(make_sample(start), start, start + kSecond / 2);
+    EXPECT_EQ(status.state, HealthState::kLost);
+    EXPECT_EQ(status.reason, "odometry timeout");
+}
+
 TEST(PoseSourceSelection, FollowsPolicy) {
     EXPECT_EQ(select_pose_source(PoseSourcePolicy::kLidar, false, true), PoseSource::kUnknown);
     EXPECT_EQ(select_pose_source(PoseSourcePolicy::kExternal, true, false), PoseSource::kUnknown);
