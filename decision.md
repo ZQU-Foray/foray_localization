@@ -275,6 +275,10 @@ Rejected:
 
 ## D11 仿真闭环放在本仓、但不引入 Gazebo 构建依赖
 
+Status: **superseded by D16**（2026-10-27：仿真闭环与离线工具已整体移出本仓）。
+以下原文保留留痕，其中 `foray_localization_sim` / `foray_localization_tools` /
+`bringup/config/sim.yaml` / `docs/simulation.md` / CI `sim-smoke` 均已不存在。
+
 Date: 2026-10-25
 
 Context: M5 HIL 验证需要录包/仿真回放与 ATE/RPE、DEGRADED/LOST 时序验证，
@@ -398,6 +402,9 @@ Rejected:
 
 ## D15 参数文档由脚本看守：README ↔ `declare_parameter` ↔ 兵种配置
 
+Status: **部分失效（D16，2026-10-27）**——`check_param_consistency.py` 与其 pytest、
+CI `test-python` 作业已删除；README 参数表结构保留，三处一致改由 PR 人工核对。
+
 Date: 2026-10-27
 
 Context: 审计 B3 实测 README「关键参数」表有 11 个参数名在源码中不存在
@@ -427,3 +434,53 @@ Alternatives:
 Rejected:
 - 自动生成会丢掉「为什么是这个默认值」的解释，README 会退化成接口清单；
 - checklist 无强制力，审计已经证明这类漂移会长期存活。
+
+---
+
+## D16 移除合成仿真与离线工具，本仓只保留核心定位算法
+
+Date: 2026-10-27
+
+Context: 用户要求「删除本仓库无意义的合成仿真，只保留核心定位算法」（m00001）。
+盘点发现仿真不是孤立脚本而是一条闭环：`foray_localization_sim`（真值里程计注入 +
+模式化 launch）、`foray_localization_tools`（合成场地生成、回放、累积建图、
+ATE/RPE 评估、参数一致性校验）、`bringup/config/sim.yaml`、`docs/simulation.md`，
+以及 CI 的 `sim-smoke` / `test-python` 两个作业。同时查出 `sim-smoke` 自 M7 起就是
+死作业：探测条件写的是仓根 `foray_localization_sim`，而包已迁入 `src/`，
+`-d` 恒为假，作业从未执行过（证据：`local/evidence-strip-sim/ci-sim-smoke-skip-proof.txt`）。
+
+Decision:
+- 删除 `src/foray_localization_sim`（4 文件）、`src/foray_localization_tools`（18 文件）、
+  `src/foray_localization_bringup/config/sim.yaml`、`docs/simulation.md`、仓根
+  `requirements.txt`；`src/` 只保留 `_core` / `_map` / `_ros` / `_relocalization` / `_bringup`。
+- CI 只保留真实执行的 4 个作业：`dir-layout` / `lint-python` / `lint-c` / `build-ros2`；
+  删除 `sim-smoke`（恒跳过）与 `test-python`（已无 `test_*.py`）。
+  `dir-layout` 的豁免词表只留 `*_bringup`。
+- 保留 `pyproject.toml`：`localization.launch.py` 仍是 Python，ruff/black 仍需目标版本 3.10。
+- 验证责任重新划分：本仓 CI 断言「可构建 + 可执行文件安装位置 + launch 参数可解析 +
+  `colcon test`」，**不**断言定位精度；车下验证改为录制包回放（README「无实车验证」）。
+
+Reason:
+- 需求来源只有 README（AGENTS.md），仿真闭环在 README 里是成章节的需求，删除必须同步
+  改 README/tree/plan/decision，否则文档成为第二套过时需求。
+- `sim-smoke` 恒跳过、`test-python` 无测试可跑：保留只会制造「绿灯假象」，
+  与用户要求「修正被全部跳过的 CI」冲突。
+- 合成仿真从未驱动过真实决策——它的产物（合成场地、回放包）与实际比赛场地无关，
+  维护成本却随源码演进持续存在（审计 A3 就专门修过仿真射线投射）。
+
+Compensation（明确记下失去的能力）:
+- 失去 **参数一致性 CI 门禁**（D15）：README ↔ `declare_parameter` ↔ 兵种配置三处
+  一致性改由 PR 人工核对。基线已跑过一次（30 + 3 项全等：
+  `local/evidence-strip-sim/check_param_consistency.txt`），恢复工具包时必须同时恢复该作业。
+- 失去 **仓内建图与地图校验工具**（`make_map.py` / `validate_map.py` /
+  `accumulate_pcd.py`）：地图改在仓外制作，本仓只按 `manifest.yaml` 契约加载并校验 SHA-256。
+- 失去 **离车精度回归**（ATE/RPE）：精度验收移到实车与下游仿真仓，本仓不再提供自动化精度断言。
+
+Alternatives:
+- 保留 `foray_localization_tools` 只删 `foray_localization_sim`（用户评估后否决）；
+- 保留工具包但删掉其测试与 CI 作业（会留下无测试的 Python 代码，更差）；
+- 只修 `sim-smoke` 的 `src/` 前缀让死作业复活（用户目标是删除仿真，不是修仿真）。
+
+Rejected:
+- 用户明确选择 C 方案：连离线工具包一起删除，只留五个核心包；
+- 修补恒跳过的作业会把它从「假绿」变成「真跑合成闭环」，与删除目标相反。

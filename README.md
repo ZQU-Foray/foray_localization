@@ -28,23 +28,23 @@ ros2 launch foray_localization_bringup localization.launch.py \
   map_manifest:=/path/to/map/manifest.yaml
 ```
 
-## 仿真验证（无实车）
+## 无实车验证
 
-离车开发用两条数据源跑同一个定位节点，接口不变：
+本仓**不内置**合成仿真与离线建图工具（2026-10-27 移出，见 `decision.md` D16）。
+车下调试只保留一条路径：**同一个定位节点 + 外部数据源**，接口不变。
 
 ```bash
-# 合成场地 + 回放 + 定位 + 评估（无 GPU）
-ros2 run foray_localization_tools gen_demo_field.py --output /tmp/sim/field.pcd
-ros2 run foray_localization_tools make_map.py --pcd /tmp/sim/field.pcd \
-  --output-dir /tmp/sim/map --version sim-demo --source synthetic
-ros2 launch foray_localization_sim sim_localization.launch.py \
-  map_manifest:=/tmp/sim/map/manifest.yaml mode:=replay duration:=40
-ros2 run foray_localization_tools eval_trajectory.py --duration 30 --json /tmp/sim/eval.json
+# 录制包重放：节点照常订阅 /livox/lidar 与 /aft_mapped_to_init
+ros2 launch foray_localization_bringup localization.launch.py \
+  config_name:=sentry.yaml map_manifest:=/path/to/map/manifest.yaml &
+ros2 bag play <recorded_bag> --clock
 ```
 
-Gazebo 场景（官方 `rmu_gazebo_simulator` / 北极熊 `pb_rm_simulation`）的话题映射、
-已知差异与阈值标定流程见 [`docs/simulation.md`](docs/simulation.md)。
-CI 的 `sim-smoke` 作业用同一套合成闭环断言 ATE 与 OK 占比。
+- 需要已知初值时，向 `/localization/relocalize` 注入 `map → base_frame`，观察状态机是否
+  回到 `INITIALIZING` 并收敛到 `OK`。
+- 建图与地图验证在**本仓之外**完成；本仓只消费符合 `manifest.yaml` 契约的地图（见「地图」）。
+- CI 只断言「可构建 + 可执行文件安装位置 + launch 参数可解析 + `colcon test` 通过」，
+  **不对定位精度作断言**——精度验收在实车与下游仿真仓完成。
 
 ## 定位方案
 
@@ -89,8 +89,6 @@ CI 的 `dir-layout` 作业按同一规则校验。
 | `foray_localization_map` | PCD 先验地图、2D 栅格、GICP 后端、残差聚类 | 否 |
 | `foray_localization_ros` | 节点、TF、QoS、消息/服务、map_server、适配器 | 是 |
 | `foray_localization_relocalization` | 可选 ONNX Runtime（CPU）全局重定位（原 `_place`，已更名），默认 OFF | 可选 |
-| `foray_localization_tools` | 建图、2D 投影、`validate_map`、`bench_lio` | 否（Python） |
-| `foray_localization_sim` | 仿真验证：真值里程计注入、合成/ Gazebo 启动入口，不含 Gazebo 依赖 | 是 |
 | `foray_localization_bringup` | 三兵种 launch / params（`heavy.yaml` 为装甲兵种预留，2027 3v3 不使用） | 是 |
 
 ## 接口
@@ -123,8 +121,9 @@ CI 的 `dir-layout` 作业按同一规则校验。
 ### 关键参数
 
 以下两张表与实现**逐字对应**：`declare_parameter` 名字、默认值、`bringup/config/*.yaml` 键集合
-三者由 `src/foray_localization_tools/scripts/check_param_consistency.py` 在 CI 中交叉校验，
-任一处漂移即失败。**本表是实现之外的唯一参数清单，新增参数必须同时改这里与兵种配置。**
+三处必须一致。原 `check_param_consistency.py` 的 CI 交叉校验已随工具包删除（`decision.md` D16），
+现改为 **PR 人工核对**：改动任一参数时，同一提交内同步本表、`declare_parameter` 与兵种配置。
+**本表是实现之外的唯一参数清单。**
 
 #### 本地化节点参数（`foray_localization`）
 
@@ -178,6 +177,7 @@ CI 的 `dir-layout` 作业按同一规则校验。
 
 3D 先验点云（PCD）与 2D 栅格（PGM/YAML）由**同一次建图**投影得到，
 **同源、同坐标系、同原点**。地图不入 git，按 manifest 版本化分发。
+建图与地图校验工具**不在本仓**（`decision.md` D16），本仓只按下列契约加载地图。
 
 ```yaml
 # manifest.yaml 示例
