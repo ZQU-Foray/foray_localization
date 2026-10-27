@@ -361,3 +361,69 @@ Alternatives:
 Rejected:
 - 逐行 `noqa` 无法阻止同类自动修复再次引入 3.11+ API；
 - ROS 2 humble 的官方支持版本是 3.10，升级不属于本仓决策范围。
+
+---
+
+## D14 位姿可用性显式化：`LocalizationState.pose_valid`
+
+Date: 2026-10-27
+
+Context: 审计 `docs/audit-2026-10-27.md` B2 指出，`LOST` 下 `publish_state()` 照旧按
+`map_to_odom_ * odom_to_base_` 合成一个「看起来很新」的位姿发出去。下游只要不盯 `state`
+就会拿过期位姿闭环——正是 README「禁止静默外推」要防的事故。另一种做法是 `LOST` 期间
+干脆不发 `LocalizationState`。
+
+Decision:
+- `LocalizationState` 新增 `bool pose_valid`；`to_msg_state()` 由健康状态纯映射：
+  `OK` / `DEGRADED` 为 `true`，`INITIALIZING` / `LOST` 为 `false`。
+- `LOST` 期间**照旧**以 `state_rate_hz` 发布状态（`confidence = 0`、TF `map → odom` 停发），
+  但 `pose` 只是最后一次合成值，仅用于 rosbag 复盘。
+- README「健康契约」把它写成**强制**约定：下游必须先判 `pose_valid`，`false` 时禁止消费 `pose`。
+
+Reason:
+- 停发消息会让下游失去「已经失效」这一事实，只能靠消息超时猜——诊断连续性更差，
+  且 `transient_local` QoS 下「最后一次消息」语义不明确；
+- 加字段是纯增量改动：消费方都在本仓、随包一起重建（ROS 2 消息类型哈希会变，
+  但这是一次全仓统一改动，不像改发布时序那样要下游改控制逻辑）；
+- 字段放在 `pose` 之后而非文件末尾，是为了「位姿 + 是否可用」在读定义时相邻；
+- 把判据从「状态枚举的语义」压成一个布尔量，下游实现不会写错。
+
+Alternatives:
+- `LOST` 下停发 `LocalizationState`，由下游按超时判定失效；
+- 只靠 `state != STATE_OK` 隐式表达（不新增字段）。
+
+Rejected:
+- 停发消息把「失效」变成不可观测事件，且与 `transient_local` 的语义纠缠；
+- 隐式判据正是审计里出事的形式——文档写过「必须检查」，实现却没有单一的检查点。
+
+## D15 参数文档由脚本看守：README ↔ `declare_parameter` ↔ 兵种配置
+
+Date: 2026-10-27
+
+Context: 审计 B3 实测 README「关键参数」表有 11 个参数名在源码中不存在
+（`map_manifest_path`、`registration_rate_hz`、`voxel_size`、`min_cluster_points` …），
+`base_frame` 默认值也写成 `base_link`，`tree.md` 还把两个节点入口写成一个文件。
+README 是本仓唯一需求来源（AGENTS.md），这类漂移会让下游照文档写配置直接启动失败。
+
+Decision:
+- 以实现为准回写 README 参数表：拆成「本地化节点参数（`foray_localization`，30 项）」
+  与「地图服务节点参数（`foray_map_server`，3 项）」，**一行一个参数名、默认值抄自
+  `declare_parameter`**，便于机器解析；
+- 新增 `src/foray_localization_tools/scripts/check_param_consistency.py`，在 CI 的
+  `test-python` 作业里断言：README 参数名集合 == `declare_parameter` 集合；兵种配置键
+  ⊆ 已声明参数；兵种配置键 ⊇ 已声明参数减去 launch 注入的 `{map_manifest, verify_map_hashes}`；
+- 配套 pytest（`test_param_consistency.py`）既跑真实仓库，也用 `tmp_path` 合成仓库证明
+  「README 多参数 / 缺参数 / 配置键漂移」三类问题都会让脚本 exit 1。
+
+Reason:
+- 文档漂移靠人眼 Review 抓不住（11 个名字错了很久没人发现），只有可执行断言能长期生效；
+- 让 README 表格结构化（一行一名）同时降低了人读成本与解析成本；
+- 配置允许「多声明 launch 注入项」，所以规则写成子集/超集而不是死板相等，避免过度约束。
+
+Alternatives:
+- README 直接由脚本从源码生成（`declare_parameter` 无法提供说明文本，反而更差）；
+- 只在 Review checklist 里加一条「记得同步 README」。
+
+Rejected:
+- 自动生成会丢掉「为什么是这个默认值」的解释，README 会退化成接口清单；
+- checklist 无强制力，审计已经证明这类漂移会长期存活。

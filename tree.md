@@ -27,8 +27,8 @@
 .
 ├── README.md                      本仓定位、接口、坐标系、地图与健康契约
 ├── AGENTS.md                      AI 协作规范
-├── plan.md                        开发计划（M0–M6）
-├── decision.md                    关键工程决策（D0–D12）
+├── plan.md                        开发计划（M0–M7、P2 可选）
+├── decision.md                    关键工程决策（D0–D15）
 ├── tree.md                        本文件
 ├── CODEOWNERS                     Review 自动分派
 ├── .foray-layer                   所属层与依赖边界（CI 校验）
@@ -40,7 +40,8 @@
 │       └── ci.yml                 组织 CI 模板（空仓绿灯，有包构建）
 │
 ├── docs/
-│   └── simulation.md              仿真数据源、Gazebo 复现、已知差异、标定流程
+│   ├── simulation.md              仿真数据源、Gazebo 复现、已知差异、标定流程
+│   └── audit-2026-10-27.md        代码审计报告（P0/P1/P2 问题、证据与修复状态）
 │
 ├── src/                           全部 ROS 2 包（仓根即 colcon 空间根）
 │   ├── foray_localization_core/        L3 核心，纯 C++17，无 ROS
@@ -110,8 +111,9 @@
 │   │   │   ├── adapters.cpp
 │   │   │   ├── conversion.cpp
 │   │   │   ├── localization_node.cpp
+│   │   │   ├── localization_node_main.cpp  localization_node 可执行入口
 │   │   │   ├── map_server_node.cpp
-│   │   │   └── nodes_main.cpp
+│   │   │   └── map_server_node_main.cpp    map_server_node 可执行入口
 │   │   └── test/
 │   │       ├── test_adapters.cpp
 │   │       └── test_conversion.cpp
@@ -134,12 +136,14 @@
 │   │   │   ├── gen_demo_field.py      生成 12×8 场地合成 PCD
 │   │   │   ├── sim_replay.py          合成点云回放（ROS 话题 / 离线 dump）
 │   │   │   ├── eval_trajectory.py     ATE/RPE/OK 占比评估，超标 exit 1
-│   │   │   └── accumulate_pcd.py      按真值位姿累积点云建图
+│   │   │   ├── accumulate_pcd.py      按真值位姿累积点云建图
+│   │   │   └── check_param_consistency.py  README 参数表 ↔ declare_parameter ↔ 兵种配置 交叉校验
 │   │   └── test/
 │   │       ├── conftest.py            把 scripts/ 加入 sys.path
 │   │       ├── test_sim_common.py     几何/射线投射/漂移模型/ATE-RPE 单测
 │   │       ├── test_eval_trajectory.py 评估汇总与离线 CLI 退出码单测
 │   │       ├── test_sim_assets.py     launch 语法、sim.yaml 键、注入器漂移单测
+│   │       ├── test_param_consistency.py 参数三处一致（真仓自检 + 合成漂移必失败）
 │   │       └── test_offline_pipeline.py 合成→建图→回放→累积 端到端
 │   │
 │   ├── foray_localization_sim/         仿真验证（不含 Gazebo 依赖）
