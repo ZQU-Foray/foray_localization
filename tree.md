@@ -28,15 +28,25 @@
 ├── README.md                      本仓定位、接口、坐标系、地图与健康契约
 ├── AGENTS.md                      AI 协作规范
 ├── plan.md                        开发计划（M0–M7、P2 可选）
-├── decision.md                    关键工程决策（D0–D16）
+├── decision.md                    关键工程决策（D0–D18）
 ├── tree.md                        本文件
 ├── CODEOWNERS                     Review 自动分派
 ├── .foray-layer                   所属层与依赖边界（CI 校验）
 ├── .gitignore
+├── .clang-format                  C/C++ 格式基线，CI `lint-c` 依此校验
 ├── pyproject.toml                 Python 配置（ruff/black，目标版本 3.10；仅 bringup launch 使用）
+├── contracts.sha256               msg/srv/action 接口指纹快照，CI `contract-lock` 依此校验
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                 组织 CI 模板（空仓绿灯，有包构建）
+│
+├── scripts/                       CI 门禁脚本（仓级；仅标准库，不引入包依赖）
+│   └── ci/
+│       ├── check_style.py         文件卫生：LF / UTF-8 / 末尾单空行 / 无行尾空白
+│       ├── check_contracts.py     契约快照：接口变更必须同步 contracts.sha256
+│       ├── check_params.py        README 参数表 ↔ declare_parameter ↔ 兵种配置三方一致
+│       ├── check_tree_doc.py      本文件与实际跟踪文件双向一致
+│       └── test_guards.py         门禁自检：注入已知缺陷，证明每个门禁真的会红
 │
 ├── docs/
 │   └── audit-2026-10-27.md        代码审计报告（P0/P1/P2 问题、证据与修复状态）
@@ -132,9 +142,6 @@
 │       │   └── heavy.yaml             装甲兵种预留：2027 3v3 阵容不使用（步兵×2+哨兵×1）
 │       └── launch/
 │           └── localization.launch.py   由 config_name 选择兵种参数
-│
-├── local/                          本地工具链/地图缓存（gitignore，不入库）
-└── log/                            运行日志（gitignore，不入库）
 ```
 
 ## 记录约束

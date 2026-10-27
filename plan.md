@@ -28,18 +28,24 @@
   - [x] **P1 B1** 点云断流显式降级：`lidar_timeout_sec` + `publish_state()` 兜底（`42c13c9`）
   - [x] **P1 B2** `LocalizationState.pose_valid`：`LOST` / `INITIALIZING` 显式 `false`，
     README 写入「必须检查」履约约定（`decision.md` D14）
-  - [x] **P1 B3** README 参数表按实现回写（原 `check_param_consistency.py` 的 CI 交叉校验已随
-    工具包删除，D16；现由 PR 人工核对 README ↔ `declare_parameter` ↔ `bringup/config/*.yaml`），
+  - [x] **P1 B3** README 参数表按实现回写（原 `check_param_consistency.py` 随工具包删除，D16；
+    该约束已由 CI `param-contract` 作业以零依赖方式恢复，D18），
     `tree.md` 修正节点 main 文件名（`decision.md` D15）
   - [ ] **P2 C1/C2/C3** converged 判据、首帧/重定位对应距离、launch 级集成测试 —— 未开工
+- [x] **M8 文档与接口漂移门禁**：仓级 `scripts/ci/` 四个零依赖脚本（`check_style` /
+  `check_contracts` / `check_params` / `check_tree_doc`）、`contracts.sha256` 接口快照、
+  CI 四个作业（`file-hygiene` / `doc-sync` / `param-contract` / `contract-lock`），
+  `tree.md` 双向一致（见 `decision.md` D18）
 - [ ] **P2 可选**：ONNX Runtime CPU 全局重定位（默认 OFF）
 
 ## 当前 Agent State
 
 DELIVERED：5 个 package 全部位于 `src/`（仓根即 colcon 空间根），重定位包已更名为
 `foray_localization_relocalization`。2026-10-27 按「只保留核心定位算法」移除合成仿真与
-离线工具（`decision.md` D16）：无 `sim-smoke`、无建图/评估脚本、CI 仅 4 个作业
-（`dir-layout` / `lint-python` / `lint-c` / `build-ros2`）。车下验证改为录制包回放。
+离线工具（`decision.md` D16）：无 `sim-smoke`、无建图/评估脚本。车下验证改为录制包回放。
+2026-10-28 补上文档与接口门禁（`decision.md` D18），CI 共 8 个作业：`dir-layout` /
+`file-hygiene` / `doc-sync` / `param-contract` / `contract-lock` / `lint-python` /
+`lint-c` / `build-ros2`。
 M5b（Gazebo 场景，下游仓）/ M5c（实车 bag）仍待外部条件。
 已知限制：本机无 ROS 2/colcon，`colcon build` 与 C++ 测试回归由 CI 执行。
 

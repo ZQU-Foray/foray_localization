@@ -402,8 +402,10 @@ Rejected:
 
 ## D15 参数文档由脚本看守：README ↔ `declare_parameter` ↔ 兵种配置
 
-Status: **部分失效（D16，2026-10-27）**——`check_param_consistency.py` 与其 pytest、
-CI `test-python` 作业已删除；README 参数表结构保留，三处一致改由 PR 人工核对。
+Status: **校验已恢复（D18，2026-10-28）**——原 `check_param_consistency.py` 与其 pytest、
+CI `test-python` 作业已随工具包删除（D16），三处一致一度退回 PR 人工核对；
+现由 `scripts/ci/check_params.py` + CI 作业 `param-contract` 看守，零第三方依赖，
+README 参数表结构保持不变。
 
 Date: 2026-10-27
 
@@ -472,6 +474,8 @@ Compensation（明确记下失去的能力）:
 - 失去 **参数一致性 CI 门禁**（D15）：README ↔ `declare_parameter` ↔ 兵种配置三处
   一致性改由 PR 人工核对。基线已跑过一次（30 + 3 项全等：
   `local/evidence-strip-sim/check_param_consistency.txt`），恢复工具包时必须同时恢复该作业。
+  **后续（2026-10-28）**：本欠账已由 D18 以仓级零依赖脚本 `scripts/ci/check_params.py`
+  + CI 作业 `param-contract` 补上，不需要恢复已删除的 Python 工具包。
 - 失去 **仓内建图与地图校验工具**（`make_map.py` / `validate_map.py` /
   `accumulate_pcd.py`）：地图改在仓外制作，本仓只按 `manifest.yaml` 契约加载并校验 SHA-256。
 - 失去 **离车精度回归**（ATE/RPE）：精度验收移到实车与下游仿真仓，本仓不再提供自动化精度断言。
@@ -484,3 +488,91 @@ Alternatives:
 Rejected:
 - 用户明确选择 C 方案：连离线工具包一起删除，只留五个核心包；
 - 修补恒跳过的作业会把它从「假绿」变成「真跑合成闭环」，与删除目标相反。
+
+## D18 文档与接口漂移改由零依赖 CI 门禁看守：`scripts/ci/`
+
+Date: 2026-10-28
+
+编号说明：D17 属于并行的另一条工作流（仿真引擎外移），尚未入库；本条目按既定顺序取 D18。
+
+Context: 用户提出「AI 开发越来越快、文件雪崩式膨胀，人类开发者如何维护代码」，讨论后的
+结论是：**读不完的代码不要再试图读懂，改为压缩「需要被理解的表面积」**。其中一层是
+「文件之间的机械一致性」——这类事实不需要判断力，只需要有人反复核对，正是 AI 生成速度下
+最先崩掉的部分。用户据此要求把门禁补上。
+
+D15 已经用一次实证给出了依据：README「关键参数」表与源码、与三份兵种配置之间曾有 11 个
+参数名长期不一致，D15、D16 两轮审计之后，tree.md 又漏记 `.clang-format`、`local/` 与
+`log/` 还与 tree.md 自己的「记录约束」段互相矛盾。这些都是**人眼 Review 反复扫过却没发现**
+的错误——不是因为粗心，而是因为没有人会逐行比对两份长清单。
+
+Decision:
+- 新增仓级门禁脚本 `scripts/ci/`，**只用 Python 标准库**，不新增任何依赖：
+  - `check_style.py`——LF / UTF-8 / 文件末尾恰好一个换行 / 无行尾空白。
+    缩进不在此重复实现：C/C++ 归 `clang-format`（`lint-c`），Python 归 ruff/black。
+  - `check_contracts.py`——`msg`/`srv`/`action` 的 SHA-256 快照，`--update` 刷新。
+  - `check_params.py`——README 参数表 ↔ `declare_parameter` ↔ `bringup/config/*.yaml`
+    三方一致，含跨 `constexpr` 常量解析与缺省值归一化（`0.1` ≡ `0.10`）。
+  - `check_tree_doc.py`——`tree.md` 与 `git ls-files` **双向**互为镜像。
+- 新增 `contracts.sha256` 快照文件（复用标准 `sha256sum` 格式，可用 `sha256sum -c` 直验）。
+- CI 新增 `file-hygiene` / `doc-sync` / `param-contract` / `contract-lock` 四个作业，
+  各自独立成 job：红了立刻能从作业名看出是哪条规则被破。
+- 新增 `scripts/ci/test_guards.py` 与 CI 作业 `gate-selftest`：向仓库注入 7 种已知缺陷
+  （行尾空白 / CRLF / 末尾双空行 / 非法 UTF-8 / msg 字段改名 / README 默认值被改 /
+  未记录的被跟踪文件），断言对应门禁真的非零退出，再断言恢复后全部复绿且 `git status`
+  无残留。门禁必须能被证明「在坏输入上失败」，否则无法排除它已被改坏。
+- 自检文件命名为 `test_guards.py` 并保持可被 `pytest` 直接收集；自跑（不经 pytest）时
+  末尾打印 `[==========] N tests from N test suites ran.` 汇总行。理由：DSH 任务引擎与
+  部分 CI 适配器只从 gtest / pytest / ctest 等已知运行器的输出里判定「确实跑了 N 个用例」，
+  `python3 某个脚本.py` 不在识别名单内，退出码 0 会被当成「没有测试」。用标准汇总行
+  而不是引入 pytest 依赖，既不增加安装步骤，又让自检结果可被自动消费。
+- 同步修 tree.md：补 `.clang-format`、`scripts/`、`contracts.sha256`；
+  删掉 `local/` 与 `log/` 两行（tree.md 的「记录约束」段本就规定它们不得记录）。
+
+Reason:
+- 这四类约束原文都写在 AGENTS.md / README / D15 里，但**只有能被机器执行的那部分才会
+  长期生效**。写在文档里的规则，在 AI 高频提交下退化成「写的时候想过」。
+- 选零依赖而非恢复 `foray_localization_tools`（D16 已删除）：门禁的价值在于**任何机器上
+  一条命令就能跑**，包括没有装 pyproject 依赖的 CI runner 与 AI agent 的临时容器。
+  恢复工具包会把「跑一下门禁」重新变成「先配环境」。
+- 双向检查而非单向：只查「文档写了但文件不存在」会漏掉新增未记录（最常见），
+  只查「文件存在但文档没写」会漏掉虚构条目。两个方向都要。
+- 门禁本身也必须可被怀疑。`sim-smoke` 的先例说明「看起来在跑的检查」可能从未生效；
+  一个被削弱成恒绿的门禁比没有门禁更危险——它制造虚假安全感。这就是 `test_guards.py`
+  的存在理由：定期证明每个门禁仍会红。
+- 明确范围边界：这些门禁只锁**事实与事实之间是否一致**，不锁**设计是否合理**。
+  后者仍需要人，也仍需要文档承载意图——门禁是让人把注意力从「抄写是否准确」里解放出来，
+  不是取代判断。
+
+Evidence:
+- 门禁上线当次即抓到 3 处真实漂移：`tree.md` 漏记 `.clang-format`、漏记 `scripts/` 自身、
+  `local/`+`log/` 与其「记录约束」段自相矛盾。这些是 D15/D16 两轮人工审计都漏掉的。
+- 故障注入验证（每个场景注入后应红、恢复后应绿，全部符合预期）：
+  | 场景 | 门禁 | 结果 |
+  |---|---|---|
+  | 追加行尾空白 | `check_style.py` | exit=1 |
+  | 首行改 CRLF | `check_style.py` | exit=1 |
+  | 文件末尾双空行 | `check_style.py` | exit=1 |
+  | `LocalizationState.msg` 改字段名 | `check_contracts.py` | exit=1 |
+  | README 参数默认值 `0.10`→`0.99` | `check_params.py` | exit=1 |
+  | 新增未记录的跟踪文件 | `check_tree_doc.py` | exit=1 |
+  | 全部恢复后复跑 | 四个脚本 | exit=0 |
+- 门禁自检（`python3 scripts/ci/test_guards.py`）：11 个用例全部符合预期——4 项基线绿、
+  7 种缺陷全部被对应门禁抓住、恢复后复绿、测试前后 `git status` 完全一致。
+- 耗时：四个门禁脚本合计不超过 10 秒（本机为慢速外挂盘，`user` CPU 时间仅 0.1–0.2 s，
+  几乎全为文件读取等待）；`test_guards.py` 因重复调用门禁约 50 秒。
+  GitHub Actions 的本地 SSD 上两者都远快于此。
+
+Alternatives:
+- 用 pre-commit 框架统一管理钩子——需要每台机器 `pre-commit install`，AI agent 的
+  一次性容器里通常没有；CI 才是唯一无法绕过的关口。
+- 恢复 `foray_localization_tools` 并用 pytest 承载这些断言——与 D16 的删除决定冲突，
+  且把这些断言绑回一个本该只有算法的包里。
+- 只做 Git 本地钩子——本地可 `--no-verify` 绕过，跨机器不同步，保护不了 PR。
+
+Rejected:
+- 「只告警不失败」（warning 模式）：D15 的教训正是没人看的规则等于没有规则。
+- 让门禁自动修复格式（自动 `--update` 快照、自动重排 README）：会把「接口变了」这件
+  需要人判断的事静默吞掉，快照失去全部意义。
+
+状态：已执行（2026-10-28）。`param-contract` 同时补上了 D16 记下的那笔「失去参数一致性
+门禁」的欠账，且不再依赖被删除的 Python 工具包。

@@ -2,18 +2,27 @@
 # 本仓已按实际技术栈裁剪：只保留**真实执行**的作业。
 #
 # 作业集合：
-#   dir-layout   目录与包命名规范
-#   lint-python  Python 语法/格式（本仓仅剩 bringup launch 的 .py）
-#   lint-c       C/C++ 格式
-#   build-ros2   colcon 构建 + ros2 pkg executables + launch 解析 + colcon test
+#   dir-layout      目录与包命名规范
+#   file-hygiene    文件卫生（LF / UTF-8 / 末尾单空行 / 无行尾空白）
+#   doc-sync        tree.md 与实际跟踪文件双向一致
+#   param-contract  README 参数表 ↔ declare_parameter ↔ 兵种配置三方一致
+#   contract-lock   msg/srv/action 接口指纹快照
+#   gate-selftest   门禁自检：注入已知缺陷，证明每个门禁真的会红
+#   lint-python     Python 语法/格式（本仓仅剩 bringup launch 的 .py）
+#   lint-c          C/C++ 格式
+#   build-ros2      colcon 构建 + ros2 pkg executables + launch 解析 + colcon test
 #
 # 更新记录：
+#   - 新增 file-hygiene / doc-sync / param-contract / contract-lock 四个作业
+#     （决定见 decision.md D18）。它们把 AGENTS.md 与 README 里原本靠人眼维持的约束变成
+#     可执行断言，依据是 D15 的结论：文档漂移靠人眼 Review 抓不住，只有可执行断言能长期生效。
+#     实现放在仓级 `scripts/ci/`，只用 Python 标准库，不恢复已删除的 Python 工具包。
 #   - 删除 sim-smoke：探测条件写的是仓根 `foray_localization_sim`，而包在
 #     `src/foray_localization_sim`（M7 迁入），求值恒为 found=false，作业自始至终
 #     被跳过、从未保护过任何东西。合成仿真链路已整体移出本仓。
 #   - 删除 test-python：Python 测试随 `foray_localization_tools` 一并移除，仓内已无
-#     `test_*.py`；`check_param_consistency.py` 也被删除，恢复工具包时须同时恢复该作业
-#     （决定见 decision.md D16）。
+#     `test_*.py`；`check_param_consistency.py` 也被删除（决定见 decision.md D16）。
+#     该约束已于 D18 由 `param-contract` 作业以零依赖方式恢复。
 #   - dir-layout 的豁免词表只保留 `*_bringup`（装配包，无 include/ 与 test/）。
 
 name: CI
@@ -77,6 +86,63 @@ jobs:
             exit 1
           fi
           echo "目录规范校验通过"
+
+  # ---- 文件卫生 ----
+  # AGENTS.md「必须」里可机械判定的部分：LF · UTF-8 · 文件末尾一个空行 · 无行尾空白。
+  # 缩进不在这里查：C/C++ 归 clang-format（lint-c），Python 归 ruff/black（lint-python）。
+  file-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验文件卫生
+        run: python3 scripts/ci/check_style.py
+
+  # ---- tree.md 与实际跟踪文件双向一致 ----
+  # 文档最常见的腐坏不是写错，而是「没跟上」：新增文件、删除目录，tree.md 悄悄过期。
+  # 过期的结构说明比没有更危险——它会让下一个人照着错误的地图动手。
+  doc-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验 tree.md 与仓库双向一致
+        run: python3 scripts/ci/check_tree_doc.py
+
+  # ---- 参数三方一致 ----
+  # README「关键参数」自称「本表是实现之外的唯一参数清单」，
+  # 与 declare_parameter、bringup/config/*.yaml 三处必须逐字一致。
+  # D16 删掉 check_param_consistency.py 后该约束退化成 PR 人工核对，
+  # 而 D15 已实证人眼抓不住这类漂移（11 个参数名错了很久无人发现）。
+  param-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验 README 参数表 ↔ declare_parameter ↔ 兵种配置
+        run: python3 scripts/ci/check_params.py
+
+  # ---- 契约快照 ----
+  # 下游仓按 msg 字段写回调，改一个字段名可能编译期报错，也可能运行期静默错位。
+  # 快照的唯一职责是让「接口变了但没人通知下游」在 PR diff 里必然可见。
+  contract-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验 msg/srv/action 接口指纹
+        run: python3 scripts/ci/check_contracts.py
+
+  # ---- 门禁自检 ----
+  # 门禁最大的失败模式是「悄悄变成恒绿」（sim-smoke 就是先例：恒跳过却显示通过）。
+  # 本作业向仓库注入 7 种已知缺陷，断言对应门禁真的会红，并断言工作区无残留。
+  gate-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 自检四道门禁
+        run: python3 scripts/ci/test_guards.py
 
   # ---- Python 代码检查 ----
   # 本仓 Python 只剩 bringup launch 文件：仍按 pyproject.toml 的 3.10 目标检查。

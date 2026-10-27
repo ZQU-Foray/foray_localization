@@ -121,8 +121,9 @@ CI 的 `dir-layout` 作业按同一规则校验。
 ### 关键参数
 
 以下两张表与实现**逐字对应**：`declare_parameter` 名字、默认值、`bringup/config/*.yaml` 键集合
-三处必须一致。原 `check_param_consistency.py` 的 CI 交叉校验已随工具包删除（`decision.md` D16），
-现改为 **PR 人工核对**：改动任一参数时，同一提交内同步本表、`declare_parameter` 与兵种配置。
+三处必须一致。该约束由 CI 作业 `param-contract`（`scripts/ci/check_params.py`）看守，不一致直接红：
+改动任一参数时，必须在同一提交内同步本表、`declare_parameter` 与兵种配置。
+（历史：旧校验脚本随工具包删除后曾一度退回人工核对，`decision.md` D16；D18 以零依赖方式恢复。）
 **本表是实现之外的唯一参数清单。**
 
 #### 本地化节点参数（`foray_localization`）
