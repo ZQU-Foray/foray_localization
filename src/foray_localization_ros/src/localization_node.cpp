@@ -56,6 +56,7 @@ LocalizationNode::LocalizationNode(const rclcpp::NodeOptions& options)
     health_config_.degraded_inlier_ratio = declare_parameter<double>("degraded_inlier_ratio", 0.35);
     health_config_.lost_timeout_sec = declare_parameter<double>("lost_timeout_sec", 1.0);
     health_config_.odom_timeout_sec = declare_parameter<double>("odom_timeout_sec", 0.5);
+    health_config_.lidar_timeout_sec = declare_parameter<double>("lidar_timeout_sec", 0.2);
     health_config_.warmup_frames = declare_parameter<int>("warmup_frames", 3);
     health_config_.recover_frames = declare_parameter<int>("recover_frames", 3);
     health_ = foray::localization::HealthMonitor(health_config_);
@@ -200,6 +201,9 @@ void LocalizationNode::on_cloud(const sensor_msgs::msg::PointCloud2::ConstShared
     std::lock_guard<std::mutex> lock(mutex_);
     latest_cloud_ = std::move(points);
     latest_cloud_stamp_ns_ = stamp_ns;
+    // 激光活性用“接收时刻”判定，不用消息 stamp：实车驱动的时间戳可能与节点时钟不同源
+    // （use_sim_time、传感器上电时刻），跨时钟域比较会把健康状态直接判成断流。
+    last_cloud_rx_ns_ = now().nanoseconds();
     has_cloud_ = true;
 }
 
@@ -323,6 +327,19 @@ void LocalizationNode::publish_state() {
     } else if (has_odom_ && health_config_.odom_timeout_sec > 0.0 &&
                static_cast<double>(now_ns - last_odom_ns_) / 1e9 >
                    health_config_.odom_timeout_sec) {
+        foray::localization::RegistrationSample sample;
+        sample.stamp_ns = now_ns;
+        sample.valid = false;
+        sample.mean_residual_m = 0.0;
+        sample.inlier_ratio = 0.0;
+        health_status_ = health_.update(sample, now_ns, last_odom_ns_);
+    } else if (has_odom_ && health_config_.lidar_timeout_sec > 0.0 &&
+               (last_cloud_rx_ns_ <= 0 ||
+                static_cast<double>(now_ns - last_cloud_rx_ns_) / 1e9 >
+                    health_config_.lidar_timeout_sec)) {
+        // 激光断流：点云停下后配准回调不再运行（!has_cloud_ 提前 return），
+        // 若这里不显式喂不可用样本，健康状态会冻结在 OK，TF 会按旧 map→odom 继续外推，
+        // 正是 README 明令禁止的「静默外推」。状态机自身负责 DEGRADED→LOST 的时限。
         foray::localization::RegistrationSample sample;
         sample.stamp_ns = now_ns;
         sample.valid = false;

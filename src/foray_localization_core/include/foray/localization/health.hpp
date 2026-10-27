@@ -29,6 +29,10 @@ struct HealthConfig {
     double lost_timeout_sec{1.0};
     /// 里程计断流超过该时长直接进入 LOST。
     double odom_timeout_sec{0.5};
+    /// 点云断流超过该时长即视为无有效配准（由节点喂入不可用样本）。
+    /// 取 0.2 s = README「点云断流 ≤ 200 ms 进 DEGRADED」的验收上限，
+    /// 同时高于 MID360 的 10 Hz 帧间隔（100 ms），避免正常周期抖动误判。
+    double lidar_timeout_sec{0.2};
     /// 从 INITIALIZING 进入 OK 所需的连续好帧数。
     int warmup_frames{3};
     /// 从 DEGRADED 恢复 OK 所需的连续好帧数。
