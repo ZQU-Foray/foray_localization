@@ -294,7 +294,10 @@ void LocalizationNode::on_align_timer() {
     sample.mean_residual_m = result.mean_residual_m;
     sample.inlier_ratio = result.inlier_ratio;
     sample.fitness = result.fitness;
-    health_status_ = health_.update(sample, stamp_ns, odom_ns);
+    // 健康评估以当前时间进行：odom_ns 是最近一次里程计时间戳，更新快于点云，
+    // 与点云时间戳相比会天然反序，若直接传入会误判为里程计断流。
+    const std::int64_t eval_ns = now().nanoseconds();
+    health_status_ = health_.update(sample, eval_ns, odom_ns);
 
     // LOST 粘滞：只有人工重定位 reset 后才重新接受配准结果。
     if (health_status_.state != foray::localization::HealthState::kLost &&

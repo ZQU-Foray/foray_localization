@@ -11,12 +11,24 @@ namespace {
 
 constexpr double kSecondsToNanoseconds = 1.0e9;
 
+/// 时间戳反序容差：里程计 50–100 Hz、点云 10 Hz，不同回调源的时间戳天然存在
+/// 不超过一个点云周期（100 ms）的先后抖动；保守取 2 个点云周期（200 ms），
+/// 超过该容差的“now 早于 then”仍视为时间基准异常（不可用）。
+constexpr Timestamp kTimestampSkewToleranceNs = 2 * 100'000'000;
+
 double to_seconds(Timestamp nanoseconds) {
     return static_cast<double>(nanoseconds) / kSecondsToNanoseconds;
 }
 
 double age_seconds(Timestamp now_ns, Timestamp then_ns) {
-    if (then_ns <= 0 || now_ns < then_ns) {
+    if (then_ns <= 0) {
+        return std::numeric_limits<double>::infinity();
+    }
+    if (now_ns < then_ns) {
+        const Timestamp skew_ns = then_ns - now_ns;
+        if (skew_ns <= kTimestampSkewToleranceNs) {
+            return 0.0;
+        }
         return std::numeric_limits<double>::infinity();
     }
     return to_seconds(now_ns - then_ns);
