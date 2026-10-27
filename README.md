@@ -211,9 +211,9 @@ source: "RMUL 2027 field survey"
 **`pose_valid`**、`confidence`、`age_sec`（距上次有效配准）、`state`、`source`、`reason`。
 
 **位姿消费约定（强制）**：下游**必须**先判 `pose_valid`，为 `false` 时禁止把 `pose`
-用于闭环控制、路径规划或决策——`state ≠ OK` 时该字段仍会带着最后一次合成位姿，
-只为 rosbag 复盘与诊断保留。TF `map → odom` 在 `LOST` 下停发，下游若绕过 `pose_valid`
-直接查 TF 会拿到过期结果。**失效标志不可被下游静默忽略。**
+用于闭环控制、路径规划或决策——`INITIALIZING`/`LOST` 时该字段仍会带着未经校正或已停更的
+合成位姿，只为 rosbag 复盘与诊断保留。TF `map → odom` 在 `LOST` 下停发，下游若绕过
+`pose_valid` 直接查 TF 会拿到过期结果。**失效标志不可被下游静默忽略。**
 
 ## 依赖
 
