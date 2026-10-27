@@ -216,6 +216,19 @@ jobs:
           source /opt/ros/humble/setup.bash
           colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
+      - name: 校验可执行文件安装位置 (ros2 pkg executables)
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          ros2 pkg executables foray_localization_ros | tee /tmp/exes.txt
+          for exe in localization_node map_server_node; do
+            grep -qx "foray_localization_ros $exe" /tmp/exes.txt \
+              || { echo "::error::ros2 pkg executables 缺少 $exe（install RUNTIME 目录应为 lib/<pkg>/）"; exit 1; }
+          done
+          ros2 launch foray_localization_bringup localization.launch.py --show-args
+
       - name: 测试 (colcon test)
         if: steps.detect.outputs.found == 'true'
         shell: bash
