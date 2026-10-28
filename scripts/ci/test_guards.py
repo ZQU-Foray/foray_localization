@@ -29,7 +29,9 @@ SCRIPTS = ROOT / "scripts" / "ci"
 
 # 注入点选受跟踪的中性文本文件：改它不改变「哪些文件被记录」，
 # 只影响各门禁对内容的判断，避免测试自身引发跨门禁的连锁反应。
-STYLE_PROBE = ROOT / "docs" / "audit-2026-10-27.md"
+# 风格探针用专门的 docs/probe-style.md：审计报告之类的一次性分析不入库，
+# 门禁自检不能依赖一个被 .gitignore 排除的文件。
+STYLE_PROBE = ROOT / "docs" / "probe-style.md"
 CONTRACT_PROBE = ROOT / "src" / "foray_localization_ros" / "msg" / "LocalizationState.msg"
 PARAM_PROBE = ROOT / "README.md"
 TREE_PROBE = ROOT / "scripts" / "ci" / "probe_untracked.py"

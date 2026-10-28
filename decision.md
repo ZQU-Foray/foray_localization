@@ -581,3 +581,25 @@ Rejected:
 
 状态：已执行（2026-10-28）。`param-contract` 同时补上了 D16 记下的那笔「失去参数一致性
 门禁」的欠账，且不再依赖被删除的 Python 工具包。
+
+## D19 一次性分析报告不入库，门禁自检改用专门的探针文件
+
+Context: `docs/audit-2026-10-27.md` 是一次性代码审计快照（P0/P1/P2 问题与修复状态）。
+它记录的是「某一天谁查出了什么」，问题修完之后就没有维护价值，却会随仓永久增重；
+同时 `scripts/ci/test_guards.py` 一直拿它当 `STYLE_PROBE`（注入缺陷验证风格门禁会红），
+于是「不入库」和「门禁自检依赖它」直接冲突。
+
+Decision:
+- 日期化的审计/复核报告一律**本地留存、不入库**：`.gitignore` 里按
+  `docs/audit-*.md` 与 `src/*/docs/*_AUDIT.md` 这类模式排除；审计的**结论**留在
+  `decision.md` 与 `plan.md`，**可复现的判据**留在脚本与 JSON 参数里（如
+  `step_measurements.json`），报告文件本身不进仓。
+- 门禁自检的注入点改用专门的 [`docs/probe-style.md`](docs/probe-style.md)：
+  它没有需求语义，任何门禁都不读它的内容，只服务 `test_guards.py`。
+
+Consequences:
+- `tree.md` 与本文件被门禁双向校验，所以探针文件必须同时登记进 `tree.md`；
+  删探针等于让风格门禁自测失去落点，CI 会红。
+- 已发布的历史提交里仍有那份审计报告，不重写历史；只从当前树移除。
+
+状态：已执行（2026-10-28）。

@@ -50,7 +50,7 @@
 │       └── test_guards.py         门禁自检：注入已知缺陷，证明每个门禁真的会红
 │
 ├── docs/
-│   └── audit-2026-10-27.md        代码审计报告（P0/P1/P2 问题、证据与修复状态）
+│   └── probe-style.md             门禁风格探针（test_guards 注入缺陷用，无需求语义）
 │
 ├── src/                           全部 ROS 2 包（仓根即 colcon 空间根）
 │   ├── foray_localization_core/        L3 核心，纯 C++17，无 ROS

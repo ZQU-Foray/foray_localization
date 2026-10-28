@@ -21,7 +21,7 @@
   - [x] **M7a CI 首次真实运行修复**：补仓根 `requirements.txt`（test-python 缺 PyYAML）、
     清 ruff / clang-format 违规、脚本记录 100755、`pyproject.toml` 固定 Python 3.10
     （见 `decision.md` D13）；`requirements.txt` 与 `test-python` 已于 2026-10-27 删除（D16）
-- [x] **M7b 审计报告修复（`docs/audit-2026-10-27.md`）**
+- [x] **M7b 审计报告修复**（报告为一次性分析，本地留存、不入库；口径见 `decision.md` D14）
   - [x] **P0 A1** 可执行文件装到 `lib/<pkg>`，`ros2 run` / `launch` 恢复（`3538e2a`）
   - [x] **P0 A2** 健康状态对时间戳小幅反序容错，去掉 `age_seconds = +inf` 的永久 LOST（`25b622c`）
   - [x] **P0 A3** 仿真射线投射改用传感器系点云，合成点云随位姿变化（`99da264`）
