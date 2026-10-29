@@ -43,9 +43,11 @@
 DELIVERED：5 个 package 全部位于 `src/`（仓根即 colcon 空间根），重定位包已更名为
 `foray_localization_relocalization`。2026-10-27 按「只保留核心定位算法」移除合成仿真与
 离线工具（`decision.md` D16）：无 `sim-smoke`、无建图/评估脚本。车下验证改为录制包回放。
-2026-10-28 补上文档与接口门禁（`decision.md` D18），CI 共 8 个作业：`dir-layout` /
-`file-hygiene` / `doc-sync` / `param-contract` / `contract-lock` / `lint-python` /
-`lint-c` / `build-ros2`。
+2026-10-28 补上文档与接口门禁（`decision.md` D18），CI 共 9 个作业：`dir-layout` /
+`file-hygiene` / `doc-sync` / `param-contract` / `contract-lock` / `gate-selftest` /
+`lint-python` / `lint-c` / `build-ros2`（作业清单以 `.github/workflows/ci.yml` 的 `jobs`
+为准，此处只是便于扫读的复述；此前写成「8 个」并漏列 `gate-selftest` 正是靠人眼同步
+数字的产物）。
 M5b（Gazebo 场景，下游仓）/ M5c（实车 bag）仍待外部条件。
 已知限制：本机无 ROS 2/colcon，`colcon build` 与 C++ 测试回归由 CI 执行。
 
