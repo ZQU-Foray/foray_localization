@@ -32,7 +32,9 @@ SCRIPTS = ROOT / "scripts" / "ci"
 # 风格探针用专门的 docs/probe-style.md：审计报告之类的一次性分析不入库，
 # 门禁自检不能依赖一个被 .gitignore 排除的文件。
 STYLE_PROBE = ROOT / "docs" / "probe-style.md"
-CONTRACT_PROBE = ROOT / "src" / "foray_localization_ros" / "msg" / "LocalizationState.msg"
+CONTRACT_PROBE = (
+    ROOT / "src" / "foray_localization_ros" / "msg" / "LocalizationState.msg"
+)
 PARAM_PROBE = ROOT / "README.md"
 TREE_PROBE = ROOT / "scripts" / "ci" / "probe_untracked.py"
 
@@ -105,13 +107,20 @@ def test_style_catches_invalid_utf8() -> None:
 def test_contracts_catches_field_rename() -> None:
     # pose_valid 是 452d58b 新增的显式位姿可用性位：改名而不同步审计签名，
     # 下游按旧字段名取值的代码会在编译期之外静默失败。
-    with _mutated(CONTRACT_PROBE, lambda b: b.replace(b"pose_valid", b"pose_valid_x", 1)):
+    with _mutated(
+        CONTRACT_PROBE, lambda b: b.replace(b"pose_valid", b"pose_valid_x", 1)
+    ):
         assert _run("check_contracts.py") == 1
 
 
 def test_params_catches_readme_default_drift() -> None:
     # D15 实证的失效模式：README 默认值与 declare_parameter 漂移，11 个名字错了很久没人发现。
-    with _mutated(PARAM_PROBE, lambda b: b.replace(b"| `map_frame` | `map` |", b"| `map_frame` | `mapframe` |", 1)):
+    with _mutated(
+        PARAM_PROBE,
+        lambda b: b.replace(
+            b"| `map_frame` | `map` |", b"| `map_frame` | `mapframe` |", 1
+        ),
+    ):
         assert _run("check_params.py") == 1
 
 

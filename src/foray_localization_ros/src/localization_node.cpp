@@ -342,9 +342,8 @@ void LocalizationNode::publish_state() {
         sample.inlier_ratio = 0.0;
         health_status_ = health_.update(sample, now_ns, last_odom_ns_);
     } else if (has_odom_ && health_config_.lidar_timeout_sec > 0.0 &&
-               (last_cloud_rx_ns_ <= 0 ||
-                static_cast<double>(now_ns - last_cloud_rx_ns_) / 1e9 >
-                    health_config_.lidar_timeout_sec)) {
+               (last_cloud_rx_ns_ <= 0 || static_cast<double>(now_ns - last_cloud_rx_ns_) / 1e9 >
+                                              health_config_.lidar_timeout_sec)) {
         // 激光断流：点云停下后配准回调不再运行（!has_cloud_ 提前 return），
         // 若这里不显式喂不可用样本，健康状态会冻结在 OK，TF 会按旧 map→odom 继续外推，
         // 正是 README 明令禁止的「静默外推」。状态机自身负责 DEGRADED→LOST 的时限。
