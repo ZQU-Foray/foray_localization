@@ -290,6 +290,14 @@ void LocalizationNode::on_align_timer() {
     }
 
     const auto result = aligner_.align(cloud, map_.cloud, guess);
+    // 配准失败（有效对应点不足 / 输入为空）时 inlier_ratio 为 0，健康状态会一路退到 LOST。
+    // 这条日志是唯一能看出「为什么无效」的地方，不加就只能看到 registration rejected。
+    if (result.inlier_ratio <= 0.0) {
+        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                             "配准无有效对应: %s (source=%zu target=%zu iterations=%d)",
+                             result.error.c_str(), cloud.size(), map_.cloud.size(),
+                             result.iterations);
+    }
 
     std::lock_guard<std::mutex> lock(mutex_);
     foray::localization::RegistrationSample sample;
