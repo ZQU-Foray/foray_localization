@@ -708,6 +708,10 @@ Consequences:
   `map_voxel_leaf_m`（默认 0.25）对地图降采样，实测本仓口径下 map 包 34 tests 全绿、
   单帧耗时未超预算，但**没有实车/实图数据**，所以 p99 ≤ 40 ms 的验收项保持未勾选，
   等 M5c 录包后再定缓存策略。
+- 另一处重复开销（审核时补记）：质量评估调 `evaluate_alignment` 会对 target 再建一份
+  体素索引，与 GICP 内部的 KD 树并存。这是为了让 `fitness`/`inlier_ratio` 与内置 ICP
+  同口径而付的代价——换成 PCL 的 `getFitnessScore()` 能省掉这次建索引，但语义相反
+  （见 Rejected）。是否把索引也做跨帧缓存，与上一条一起等实测数据。
 - 平台面：默认 ON 让 PCL 成为硬依赖，而 PCL 在 Windows 上要另走 vcpkg。Windows/MSVC 构建
   本仓从未验证过（CI 全在 Linux 容器），因此 README 只声明「验证过的环境是 Linux」，
   并指出 Windows 上先用 `-DFORAY_WITH_PCL=OFF` 摘掉 PCL 再谈构建；`pcl_gicp_aligner.cpp`
