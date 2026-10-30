@@ -54,7 +54,7 @@ TEST(HealthMonitor, DegradesAndRecovers) {
 
     const Timestamp degraded_at = start + 2;
     const HealthStatus degraded =
-        monitor.update(make_sample(degraded_at, true, 0.15, 0.5), degraded_at, degraded_at);
+        monitor.update(make_sample(degraded_at, true, 0.20, 0.5), degraded_at, degraded_at);
     EXPECT_EQ(degraded.state, HealthState::kDegraded);
     EXPECT_LT(degraded.confidence, 1.0);
 
@@ -62,6 +62,18 @@ TEST(HealthMonitor, DegradesAndRecovers) {
               HealthState::kDegraded);
     EXPECT_EQ(monitor.update(make_sample(degraded_at + 2), degraded_at + 2, degraded_at + 2).state,
               HealthState::kOk);
+}
+
+TEST(HealthMonitor, AcceptsResidualAboveLegacyThreshold) {
+    // 0.25 m 体素先验图上，配准收敛后的平均残差实测约 0.10 m，
+    // 旧阈值（0.10）把完美配准判成不合格，导致永远无法完成 warmup。
+    HealthMonitor monitor(test_config());
+    const Timestamp start = kSecond;
+
+    monitor.update(make_sample(start, true, 0.12, 0.95), start, start);
+    const HealthStatus status = monitor.update(make_sample(start + kSecond / 10, true, 0.12, 0.95),
+                                               start + kSecond / 10, start + kSecond / 10);
+    EXPECT_EQ(status.state, HealthState::kOk);
 }
 
 TEST(HealthMonitor, LostAfterNoValidRegistration) {

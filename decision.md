@@ -722,3 +722,56 @@ Consequences:
 状态：已执行（2026-10-30）。容器实测（本仓 5 个包，`colcon test-result` 汇总）：默认 ON
 75 tests / 0 failures，`-DFORAY_WITH_PCL=OFF` 70 tests / 0 failures；差的那 5 条正是
 `test_pcl_gicp`（4 个用例 + 该文件在 CTest 里的汇总条目），map 包单独口径 ON 34 / OFF 29。
+
+---
+
+## D22 健康阈值必须高于先验地图自身离散度
+
+Date: 2026-10-30
+
+Context: 仿真里换成 PCL GICP 后端后，定位节点始终进不了 `OK`：先停在 `INITIALIZING`，
+`lost_timeout_sec` 到点后转 `LOST`；`LOST` 是粘滞状态，只有显式 `Relocalize` 能清，
+而重新注入真值后节点又回到 `INITIALIZING` 并再次超时，看起来像「GICP 起不来、
+注入初值也没用」。实测每帧诊断（临时加在节点里，事后已撤）显示后端本身没问题：
+`converged=1`、`iterations=1~5`、`inlier_ratio=1.000`、`fitness≈0.83`，但
+**`mean_residual_m` 稳定在 0.1015~0.1026 m**，而 `ok_mean_residual_m` 是 0.10。
+
+Decision: `ok_mean_residual_m` 0.10 → 0.15，`degraded_mean_residual_m` 0.20 → 0.30
+（`heavy.yaml` 按同比例 0.12/0.24 → 0.16/0.32）。三处必须同步：`HealthConfig` 的成员
+默认值（`health.hpp`）、节点的 `declare_parameter` 默认值、以及
+`src/foray_localization_bringup/config/*.yaml` 三份兵种配置——`check_params.py`
+就是来锁这三处一致性的，改一处漏一处 CI 会红。
+
+Reason: 阈值量的东西和地图的离散度是同一个量纲。先验图按 `map_voxel_leaf_m`（默认
+0.25）做过体素降采样，点间距本身就是 0.25 m 量级，于是即使配准完全收敛，每个源点
+到最近的地图点也有约 0.10 m 的残差——这是**地图分辨率的下限**，不是配准误差。旧阈值
+0.10 恰好压在这条基线上，实测值高出 1.5 mm 就永久不合格：`good` 永不成立 →
+`warmup_frames` 永远攒不满 → `INITIALIZING` 超时 → `LOST` 粘滞 → 注入初值重来一遍
+只是重播同一段剧情。同一实测里 `inlier_ratio` 是 1.000，说明内点率阈值 0.55 从来不是
+瓶颈，问题只在残差这一侧。
+
+Alternatives: 让 `ok_mean_residual_m` 自动取自 `map_voxel_leaf_m`（例如 0.6 × 体素边长）；
+调小 `map_voxel_leaf_m` 让地图更细从而压低残差；放宽 `inlier_ratio`；改 GICP 的
+`correspondence_randomness` 或 `transformation_epsilon`。
+Rejected: 自动取值的想法更优雅，但实车地图的粒度未必等于本仓的降采样参数（地图是仓外
+产物），把两个独立来源耦合成一条隐式规则，现场调参时反而看不出发生了什么；调小体素会让
+地图点数与配准耗时一起涨，是拿性能换一个本来就不该卡的判据；`inlier_ratio` 已经是
+1.000，放宽它解决不了任何问题；GICP 在精确初值下 1 次迭代就收敛，参数没有可挤的水分。
+
+Consequences:
+- 仿真实测（改动后重启节点，`--symlink-install` 下 yaml 是符号链接、改 src 即生效，
+  但**节点只在启动时读参数**，必须重启才看到效果）：静态 25 s 采样 852 条，`pose_valid`
+  100%、`state=OK` 100%、`confidence` 最小 0.791 / 均值 0.825。
+- 短距运动（0.2 m/s 走 4 s）340 条样本全部 `OK`，无 `DEGRADED`/`LOST`。
+- 判据仍然有效：残差 > 0.15 进 `DEGRADED`、> 0.30 视为不可用，`test_health` 里
+  `DegradesAndRecovers` 用的样本残差同步从 0.15 抬到 0.20，避免测试挂在阈值边界上。
+- 新增回归用例 `AcceptsResidualAboveLegacyThreshold`：0.12 m 残差在默认配置下必须是
+  `OK`。这条用例的存在就是为了在有人把阈值调回 0.10 时立刻红。
+- **风险**：调宽的是「判定合格」的那一侧，实车若真的出现 0.12~0.15 m 的系统性残差，
+  现在会被判成 `OK` 而不是 `DEGRADED`。这个数值来自仿真（32 线、0.25 m 体素图），
+  实车地图与雷达线数不同，**必须用 M5c 的实车数据复核**；在那之前不要再往上抬。
+- 排查教训：issue 里「把 `ok_mean_residual_m` 放宽到 1.00 也没用」的观察无法复现。
+  `install/` 下的 yaml 是符号链接，改 `src/` 立刻生效，但参数只在节点启动时读取，
+  不重启就还是旧值——这类「改了没用」的现象优先怀疑没重启，而不是怀疑阈值机制。
+
+状态：已执行（2026-10-30）。仿真静态与短距运动实测见上；实车复核待 M5c。

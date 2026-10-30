@@ -145,8 +145,8 @@ CI 的 `dir-layout` 作业按同一规则校验。
 | `cluster_tolerance_m` | `0.30` | 残差点欧氏聚类容差（m） |
 | `verify_map_hashes` | `true` | 加载地图时校验 SHA-256；由 launch 的 `verify_map_hashes:=` 覆盖 |
 | `pose_source` | `auto` | `auto` / `lidar` / `external`；步兵/重装用 `external` |
-| `ok_mean_residual_m` | `0.10` | 进入 `OK` 的平均残差上限（m） |
-| `degraded_mean_residual_m` | `0.20` | `DEGRADED` 可接受的平均残差上限（m） |
+| `ok_mean_residual_m` | `0.15` | 进入 `OK` 的平均残差上限（m）。不能低于先验地图自身离散度：0.25 m 体素图即便配准完全收敛，实测残差也有约 0.10 m（见 `decision.md` D22） |
+| `degraded_mean_residual_m` | `0.30` | `DEGRADED` 可接受的平均残差上限（m） |
 | `ok_inlier_ratio` | `0.55` | 进入 `OK` 的内点率下限 |
 | `degraded_inlier_ratio` | `0.35` | `DEGRADED` 的内点率下限 |
 | `lost_timeout_sec` | `1.0` | 无有效配准超过该时长进入 `LOST`（s） |

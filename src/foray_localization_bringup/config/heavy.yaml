@@ -28,8 +28,8 @@ foray_localization:
     cluster_tolerance_m: 0.35
     min_cluster_size: 5
     max_cluster_size: 600
-    ok_mean_residual_m: 0.12
-    degraded_mean_residual_m: 0.24
+    ok_mean_residual_m: 0.16
+    degraded_mean_residual_m: 0.32
     ok_inlier_ratio: 0.50
     degraded_inlier_ratio: 0.32
     lost_timeout_sec: 1.0
