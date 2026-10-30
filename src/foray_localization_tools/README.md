@@ -32,6 +32,22 @@ python3 scripts/validate_map.py /path/to/map_dir/manifest.yaml
 校验必填字段、`frame_id == map`、分辨率范围、相对路径、栅格尺寸与 SHA-256。
 CI 与上机前都应运行；失败返回非零退出码。
 
+## check_param_consistency.py
+
+```bash
+python3 scripts/check_param_consistency.py
+```
+
+交叉校验「文档 / 代码 / 配置」三处的参数名（审计 2026-10-27 B3）：
+
+- `README.md` 的节点参数表（标题含 `` `节点名` ``，一行一个参数名）必须与
+  `declare_parameter` 集合完全相等，缺一个、多一个都报错；
+- `foray_localization_bringup/config/*.yaml` 的键必须都被节点声明，且除 launch 注入的
+  `{map_manifest, verify_map_hashes}` 之外不能漏配；
+- launch 文件必须确实把这两个注入项传给节点。
+
+CI 的 `test-python` 作业会运行它：改了参数忘了同步 README 或兵种配置，CI 直接红。
+
 ## 仿真闭环与评估
 
 `gen_demo_field.py` → `make_map.py` → `sim_replay.py --dump-dir` →

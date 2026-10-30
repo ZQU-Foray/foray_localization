@@ -38,6 +38,8 @@ std::uint8_t to_msg_state(foray::localization::HealthState state);
 std::uint8_t to_msg_source(foray::localization::PoseSource source);
 
 /// 组装 LocalizationState：header.stamp 取 now_ns，pose 取 map 下位姿。
+/// `pose_valid` 由健康状态推导：OK/DEGRADED 为 true，INITIALIZING/LOST 为 false
+/// —— 后两者下 pose 只是未经校正或已停更的合成值，禁止下游消费（审计 B2）。
 LocalizationStateMsg to_msg_state(const foray::localization::HealthStatus& health,
                                   const foray::localization::Pose3D& pose,
                                   foray::localization::PoseSource source, std::int64_t now_ns);

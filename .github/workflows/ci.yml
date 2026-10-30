@@ -177,6 +177,20 @@ jobs:
           fi
           pip install pytest
 
+      # README 是本仓唯一需求来源：参数表若与 declare_parameter 或 bringup 配置漂移，
+      # 下游照文档写配置必然启动失败（审计 2026-10-27 B3）。脚本缺失时跳过，
+      # 保持模板「空仓库绿灯」的性质。
+      - name: 参数一致性校验 (README ↔ declare_parameter ↔ bringup 配置)
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          script=src/foray_localization_tools/scripts/check_param_consistency.py
+          if [ -f "$script" ]; then
+            python3 "$script"
+          else
+            echo "未找到 $script，跳过参数一致性校验。"
+          fi
+
       - name: Run tests
         if: steps.detect.outputs.found == 'true'
         run: pytest -v

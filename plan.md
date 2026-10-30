@@ -18,6 +18,17 @@
   - [x] **M7a CI 首次真实运行修复**：补仓根 `requirements.txt`（test-python 缺 PyYAML）、
     清 ruff / clang-format 违规、脚本记录 100755、`pyproject.toml` 固定 Python 3.10
     （见 `decision.md` D13）
+- [x] **M7b 审计报告修复（`docs/audit-2026-10-27.md`）**
+  - [x] **P0 A1** 可执行文件装到 `lib/<pkg>`，`ros2 run` / `launch` 恢复（`3538e2a`）
+  - [x] **P0 A2** 健康状态对时间戳小幅反序容错，去掉 `age_seconds = +inf` 的永久 LOST（`25b622c`）
+  - [x] **P0 A3** 仿真射线投射改用传感器系点云，合成点云随位姿变化（`99da264`）
+  - [x] **P1 B1** 点云断流显式降级：`lidar_timeout_sec` + `publish_state()` 兜底（`42c13c9`）
+  - [x] **P1 B2** `LocalizationState.pose_valid`：`LOST` / `INITIALIZING` 显式 `false`，
+    README 写入「必须检查」履约约定（`decision.md` D14）
+  - [x] **P1 B3** README 参数表按实现回写 + `check_param_consistency.py` 在 CI 交叉校验
+    「README ↔ `declare_parameter` ↔ `bringup/config/*.yaml`」，`tree.md` 修正节点 main 文件名
+    （`decision.md` D15）
+  - [ ] **P2 C1/C2/C3** converged 判据、首帧/重定位对应距离、launch 级集成测试 —— 未开工
 - [ ] **P2 可选**：ONNX Runtime CPU 全局重定位（默认 OFF）
 
 ## 当前 Agent State

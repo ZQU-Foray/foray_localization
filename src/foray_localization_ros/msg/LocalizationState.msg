@@ -17,6 +17,12 @@ std_msgs/Header header
 # map 坐标系下的机器人位姿（base_footprint）。
 geometry_msgs/PoseWithCovariance pose
 
+# 位姿可用性：只有本字段为 true 时才允许消费 pose（导航/决策的唯一放行条件）。
+# INITIALIZING：还没完成热启动，pose 是未校正的里程计值；
+# LOST：map->odom 停更且 TF 停发，pose 只是最后一次合成值。
+# 两种情况下 pose 仅供诊断，禁止用于闭环控制（审计 B2：静默外推）。
+bool pose_valid
+
 # 0..1；LOST 时必须为 0。
 float64 confidence
 
