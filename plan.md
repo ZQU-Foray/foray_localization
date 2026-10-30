@@ -57,11 +57,11 @@ M5b 的承接方 `foray_simulation` 已建成并取证（首次 `OK` 3.78 s、�
 仍待实车条件。
 验证环境：宿主无 ROS 2 / colcon / PCL，`colcon build` 与 `colcon test` 一律在容器里跑——
 镜像 `foray_sim:humble-fortress`（Humble + Gazebo Fortress，含 PCL 1.12、gtest、colcon），
-本仓与仿真仓一起挂到 `/ws/src/`。2026-10-30 实测两轮：装 PCL GICP 前 5 个包构建 51 s、
-`colcon test-result --all` 报 73 tests / 0 errors / 0 failures；装之后默认 ON 的全仓
-**77 tests**（本仓 map 包 34 tests 含新增 `test_pcl_gicp` 4 条）、`-DFORAY_WITH_PCL=OFF`
-的全仓 74 tests（含仿真仓两个包），两轮均 0 failures。CI 的 `build-ros2` 保留，防的是
-「只在容器里验过」。
+本仓与仿真仓一起挂到 `/ws/src/`。2026-10-30 实测：装 PCL GICP 前 5 个包构建 51 s、
+73 tests / 0 errors / 0 failures；装之后同一口径（本仓 5 个包，`colcon test-result` 汇总）
+默认 ON 报 **75 tests**、`-DFORAY_WITH_PCL=OFF` 报 **70 tests**，两轮均 0 failures——
+差的那 5 条就是 `test_pcl_gicp`（4 个用例 + 该文件在 CTest 里的汇总条目），map 包单独口径
+是 ON 34 / OFF 29。CI 的 `build-ros2` 保留，防的是「只在容器里验过」。
 
 ## 模糊点与待确认项
 

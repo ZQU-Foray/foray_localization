@@ -715,5 +715,6 @@ Consequences:
   不在此刻凭空加一个没人跑过的编译选项。检出侧与门禁侧不受影响：`.gitattributes` 已钉 LF，
   `check_style.py` 按字节判 CRLF，`scripts/ci/` 与 pytest 自检在 Windows 上可正常运行。
 
-状态：已执行（2026-10-30）。容器实测：默认 ON 全仓 77 tests / 0 failures（本仓 map 包 34
-tests，含 `test_pcl_gicp` 4 条），`-DFORAY_WITH_PCL=OFF` 全仓 74 tests / 0 failures。
+状态：已执行（2026-10-30）。容器实测（本仓 5 个包，`colcon test-result` 汇总）：默认 ON
+75 tests / 0 failures，`-DFORAY_WITH_PCL=OFF` 70 tests / 0 failures；差的那 5 条正是
+`test_pcl_gicp`（4 个用例 + 该文件在 CTest 里的汇总条目），map 包单独口径 ON 34 / OFF 29。
