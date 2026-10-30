@@ -51,13 +51,6 @@ DELIVERED：5 个 package 全部位于 `src/`（仓根即 colcon 空间根），
 M5b（Gazebo 场景，下游仓）/ M5c（实车 bag）仍待外部条件。
 已知限制：本机无 ROS 2/colcon，`colcon build` 与 C++ 测试回归由 CI 执行。
 
-## Before Snapshot
-
-commit hash:   （首次提交）
-branch:        dev
-modified files: 6 个 package 新文件（见 git status）
-risk level:    L1
-
 ## 模糊点与待确认项
 
 - `foray_interfaces` 的 0.2.0 消息尚未落地；首版消息暂放 `foray_localization_ros`，迁移计划见 `decision.md` D8
@@ -66,15 +59,6 @@ risk level:    L1
   见 `foray_docs/algorithm_structure.md` §12）；保留为预留配置，不参与验收
 - 2027 场地地图需赛前场地窗口实测；当前以录制包回放验证（无实车，M5 未完成）
 - 自动全局重定位（ONNX）为 P2，默认关闭；许可证决策不在本期范围
-
-## Vector Backend Status
-
-Backend: Markdown
-Status:  ready
-Environment: 仓库内 Markdown 文档（无外部向量后端）
-Index: 本仓 `README.md` / `tree.md` / `decision.md`
-Initialization: 2026-02-19
-Commit: （首次提交）
 
 ## Acceptance Criteria
 

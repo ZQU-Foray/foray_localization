@@ -108,7 +108,7 @@ CI 的 `dir-layout` 作业按同一规则校验。
 
 | 名称 | 类型 | 说明 |
 |---|---|---|
-| `/localization/relocalize` | `foray_localization_ros/Relocalize` | 注入 `map → base_link` 初值，状态机回到 `INITIALIZING` 直到收敛 |
+| `/localization/relocalize` | `foray_localization_ros/Relocalize` | 注入 `map → base_frame` 初值（默认 `base_footprint`），状态机回到 `INITIALIZING` 直到收敛 |
 
 ### TF
 
@@ -116,7 +116,7 @@ CI 的 `dir-layout` 作业按同一规则校验。
 |---|---|---|
 | `map → odom` | `foray_localization_ros` | 20 Hz |
 | `odom → lidar` | `point_lio` | 100–200 Hz |
-| `base_link → lidar` | URDF / `robot_state_publisher`（静态） | — |
+| `base_footprint → lidar` | URDF / `robot_state_publisher`（静态） | — |
 
 ### 关键参数
 
