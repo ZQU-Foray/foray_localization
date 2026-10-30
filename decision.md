@@ -654,3 +654,66 @@ Rejected: 静音会把「脚本不可执行」这一真实缺陷永久藏起来�
 格式飞地，下一个人改这段代码仍会踩同一处。
 
 状态：已执行（2026-10-30）。修复提交 `2562ec3`，CI run 40915429011 九作业全绿。
+
+---
+
+## D21 默认配准后端改为 PCL GICP
+
+Date: 2026-10-30
+
+Context: README 从首版起就写「配准做 GICP（默认 PCL GICP）」，但仓内只有
+`IcpAligner`（点到点 ICP）：全仓 `FORAY_WITH_PCL` / `find_package(PCL)` / `gicp` 一处都没有，
+`src/foray_localization_ros/src/localization_node.cpp` 里直接构造的是
+`foray::localization_map::IcpAligner`。D9 当年已记下「PCL 未安装、首版先用内置 ICP 兜底」，
+而那只是**临时状态被写成了长期口径**：文档描述的能力实际不存在，属文档与实现不一致，
+不是实现落后于文档。2026-10-30 用户裁定「实装 PCL GICP」，这条决策把它落地。
+
+Decision:
+- 新增 `PclGicpAligner`（`pcl::GeneralizedIterativeClosestPoint<PointXYZ, PointXYZ>`），
+  后端选择做成**编译期开关 + 工厂**：`option(FORAY_WITH_PCL ON)` 决定是否编译该后端，
+  `make_aligner()` 返回 `std::unique_ptr<Aligner>`，`default_aligner_name()` 供节点打日志。
+  `#if` 只出现在 `aligner_factory.cpp` 与 `pcl_gicp_aligner.cpp`，不泄进 ROS 包。
+- 默认 ON；ON 时 `find_package(PCL 1.10 REQUIRED COMPONENTS common registration)`，
+  **找不到 PCL 直接 configure 失败**，不静默退化成 ICP。OFF 是显式逃生口（无 PCL 环境、
+  最小构建、降级排查），不是自动兜底。
+- 质量口径抽成公共 `evaluate_alignment()`（`alignment_metrics.hpp`）：内点比例、平均残差、
+  fitness 三字段由同一份代码算，两个后端都调它，连体素近邻索引 `PointCloudIndex` 也共用。
+- 每帧新建 GICP 对象，不做 target 预处理缓存；`iterations` 直接读公开成员
+  `nr_iterations_`；不新增任何 ROS 参数（`max_iterations` / `max_correspondence_distance_m` /
+  `transformation_epsilon_m` 一对一映射到 PCL setter，`correspondence_randomness` 留 PCL 默认 20）。
+- CI 增 `build-nopcl` 作业跑 `-DFORAY_WITH_PCL=OFF`，作业数 9 → 10。
+
+Reason:
+- **语义相反，绝不能直接填**：PCL 的 `getFitnessScore()` 是均方误差（越小越好），
+  本项目的 `fitness` 是 0..1 且越大越好，`RegistrationSample.valid` 与健康状态机全靠后者。
+  若两个后端各填一套，换后端就等于换了一套判定标准，`ok_inlier_ratio` 之类的阈值失去意义。
+- **target 预处理无法安全跨帧缓存**：PCL 1.12 的 `setInputTarget()` 会
+  `target_covariances_.reset()`，协方差仅在为空时重算，而 `setInputSource()` 不重置
+  `input_covariances_`，且 PCL 没有 `getTargetCovariances()` 可回取。复用同一对象跨帧，
+  等于让上一帧的 source 协方差与新一帧的 source 错配——这是静默的精度事故，比慢更糟。
+- **静默降级会造假象**：若找不到 PCL 就悄悄用 ICP，产物会是「文档说 GICP、二进制跑 ICP」
+  而没人知道。显式 configure 失败把这件事变成构建期可见的事实。
+
+Alternatives: 用运行时 ROS 参数选后端；复用同一 GICP 对象缓存 target；直接把
+`getFitnessScore()` 填进 `fitness`；实装 `small_gicp`。
+Rejected: 运行时选后端要求二进制永远带 PCL，既没省依赖又多一个没人验证的参数，且健康阈值
+会随后端漂移；对象复用见上（协方差错配）；直接填 `getFitnessScore()` 语义相反；
+`small_gicp` 用户明确不在此次范围，文档已改为不再宣称它存在。
+
+Consequences:
+- 构建从「Eigen + yaml-cpp」变成**需要 PCL ≥ 1.10**（`package.xml` 用 rosdep key
+  `libpcl-all-dev`，映射 apt `libpcl-dev`；容器与 CI 已验证 1.12）。
+- `-DFORAY_WITH_PCL=OFF` 路径由 CI `build-nopcl` 守护；只验一条路径等于另一条迟早烂掉。
+- **已知代价**：target 协方差每帧重算，地图点数大时可能吃掉 5 Hz 预算。节点已按
+  `map_voxel_leaf_m`（默认 0.25）对地图降采样，实测本仓口径下 map 包 34 tests 全绿、
+  单帧耗时未超预算，但**没有实车/实图数据**，所以 p99 ≤ 40 ms 的验收项保持未勾选，
+  等 M5c 录包后再定缓存策略。
+- 平台面：默认 ON 让 PCL 成为硬依赖，而 PCL 在 Windows 上要另走 vcpkg。Windows/MSVC 构建
+  本仓从未验证过（CI 全在 Linux 容器），因此 README 只声明「验证过的环境是 Linux」，
+  并指出 Windows 上先用 `-DFORAY_WITH_PCL=OFF` 摘掉 PCL 再谈构建；`pcl_gicp_aligner.cpp`
+  里的中文 error 字面量在 MSVC 下需要 `/utf-8`，这条留给真正做 Windows 构建时一并验证，
+  不在此刻凭空加一个没人跑过的编译选项。检出侧与门禁侧不受影响：`.gitattributes` 已钉 LF，
+  `check_style.py` 按字节判 CRLF，`scripts/ci/` 与 pytest 自检在 Windows 上可正常运行。
+
+状态：已执行（2026-10-30）。容器实测：默认 ON 全仓 77 tests / 0 failures（本仓 map 包 34
+tests，含 `test_pcl_gicp` 4 条），`-DFORAY_WITH_PCL=OFF` 全仓 74 tests / 0 failures。

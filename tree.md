@@ -39,7 +39,7 @@
 ├── contracts.sha256               msg/srv/action 接口指纹快照，CI `contract-lock` 依此校验
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                 CI 作业定义（9 个：布局/门禁/lint/构建，清单以此文件为准）
+│       └── ci.yml                 CI 作业定义（10 个：布局/门禁/lint/构建 ON/构建 OFF，清单以此文件为准）
 │
 ├── scripts/                       CI 门禁脚本（仓级；仅标准库，不引入包依赖）
 │   └── ci/
@@ -80,16 +80,22 @@
 │   │   ├── cmake/foray_localization_mapConfig.cmake.in
 │   │   ├── include/foray/localization_map/
 │   │   │   ├── aligner.hpp            Aligner 配准抽象
+│   │   │   ├── aligner_factory.hpp    按编译期开关构造配准后端
+│   │   │   ├── alignment_metrics.hpp  共享配准质量口径 + 体素近邻索引
 │   │   │   ├── grid_map.hpp           PGM 读取 + 2D 占据栅格查询
-│   │   │   ├── icp_aligner.hpp        内置点到点 ICP 后端
+│   │   │   ├── icp_aligner.hpp        内置点到点 ICP 后端（PCL 关闭时的兜底）
 │   │   │   ├── pcd_loader.hpp         PCD（ascii/binary）读取
+│   │   │   ├── pcl_gicp_aligner.hpp   PCL GICP 后端（默认，仅 ON 时编译）
 │   │   │   ├── point_cloud.hpp        PointCloud 容器/体素降采样/变换
 │   │   │   ├── prior_map.hpp          先验地图 + 2D 栅格 + manifest 绑定
 │   │   │   └── residual_clusterer.hpp 残差欧氏聚类
 │   │   ├── src/
+│   │   │   ├── aligner_factory.cpp
+│   │   │   ├── alignment_metrics.cpp
 │   │   │   ├── grid_map.cpp
 │   │   │   ├── icp_aligner.cpp
 │   │   │   ├── pcd_loader.cpp
+│   │   │   ├── pcl_gicp_aligner.cpp   仅 FORAY_WITH_PCL=ON 时参与编译
 │   │   │   ├── point_cloud.cpp
 │   │   │   ├── prior_map.cpp
 │   │   │   └── residual_clusterer.cpp
@@ -97,6 +103,7 @@
 │   │       ├── test_grid_map.cpp
 │   │       ├── test_icp.cpp
 │   │       ├── test_pcd_loader.cpp
+│   │       ├── test_pcl_gicp.cpp      仅 FORAY_WITH_PCL=ON 时注册
 │   │       ├── test_point_cloud.cpp
 │   │       ├── test_prior_map.cpp
 │   │       └── test_residual_clusterer.cpp

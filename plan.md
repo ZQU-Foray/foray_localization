@@ -6,6 +6,7 @@
   （M0 时 6 个包；仿真与离线工具包已于 2026-10-27 移除，现 5 个，见 `decision.md` D16）
 - [x] **M1 里程计与地图管线**：point_lio 话题接入、`build_map`/`validate_map`、manifest 格式冻结
 - [x] **M2 核心与配准**：健康状态机、位姿源仲裁、manifest 校验、GICP（PCL 后端 + ICP 兜底）、残差点
+  （PCL GICP 已于 2026-10-30 实装并成为默认后端，`-DFORAY_WITH_PCL=OFF` 退回内置 ICP；见 `decision.md` D21）
 - [x] **M3 ROS 层**：LocalizationState/MapMeta/DynamicObstacle/Relocalize 消息、主节点、map_server、TF/QoS
 - [x] **M4 动态物体与重定位**：残差聚类发布、Relocalize 服务与状态机联动、允许动态区域
 - [ ] **M5 HIL 验证**：录包回放、ATE/RPE、DEGRADED/LOST 时序验证
@@ -44,23 +45,29 @@
 DELIVERED：5 个 package 全部位于 `src/`（仓根即 colcon 空间根），重定位包已更名为
 `foray_localization_relocalization`。2026-10-27 按「只保留核心定位算法」移除合成仿真与
 离线工具（`decision.md` D16）：无 `sim-smoke`、无建图/评估脚本。车下验证改为录制包回放。
-2026-10-28 补上文档与接口门禁（`decision.md` D18），CI 共 9 个作业：`dir-layout` /
+2026-10-28 补上文档与接口门禁（`decision.md` D18），CI 共 10 个作业：`dir-layout` /
 `file-hygiene` / `doc-sync` / `param-contract` / `contract-lock` / `gate-selftest` /
-`lint-python` / `lint-c` / `build-ros2`（作业清单以 `.github/workflows/ci.yml` 的 `jobs`
-为准，此处只是便于扫读的复述；此前写成「8 个」并漏列 `gate-selftest` 正是靠人眼同步
-数字的产物）。
+`lint-python` / `lint-c` / `build-ros2` / `build-nopcl`（作业清单以 `.github/workflows/ci.yml`
+的 `jobs` 为准，此处只是便于扫读的复述；此前写成「8 个」并漏列 `gate-selftest` 正是靠人眼
+同步数字的产物）。第十个作业 `build-nopcl` 是 2026-10-30 实装 PCL GICP 时加的（`decision.md`
+D21）：默认的 `build-ros2` 走 `FORAY_WITH_PCL=ON` 守护 GICP 主路径，`build-nopcl` 走 `OFF`
+守护内置 ICP 回退路径——只验一条路径等于另一条迟早烂掉。
 M5b 的承接方 `foray_simulation` 已建成并取证（首次 `OK` 3.78 s、位姿误差 0.083 m、
 `yaw` 0.012°，95 s 采样 4737 条状态中 4423 条 `OK`、零 `DEGRADED`/`LOST`）；M5c（实车 bag）
 仍待实车条件。
 验证环境：宿主无 ROS 2 / colcon / PCL，`colcon build` 与 `colcon test` 一律在容器里跑——
 镜像 `foray_sim:humble-fortress`（Humble + Gazebo Fortress，含 PCL 1.12、gtest、colcon），
-本仓与仿真仓一起挂到 `/ws/src/`。2026-10-30 实测：5 个包构建 51 s，`colcon test-result --all`
-报 73 tests / 0 errors / 0 failures。CI 的 `build-ros2` 保留，防的是「只在容器里验过」。
+本仓与仿真仓一起挂到 `/ws/src/`。2026-10-30 实测两轮：装 PCL GICP 前 5 个包构建 51 s、
+`colcon test-result --all` 报 73 tests / 0 errors / 0 failures；装之后默认 ON 的全仓
+**77 tests**（本仓 map 包 34 tests 含新增 `test_pcl_gicp` 4 条）、`-DFORAY_WITH_PCL=OFF`
+的全仓 74 tests（含仿真仓两个包），两轮均 0 failures。CI 的 `build-ros2` 保留，防的是
+「只在容器里验过」。
 
 ## 模糊点与待确认项
 
 - `foray_interfaces` 的 0.2.0 消息尚未落地；首版消息暂放 `foray_localization_ros`，迁移计划见 `decision.md` D8
-- `small_gicp` 尚未在 `foray_ws` pin；首版用 PCL GICP + 内置 ICP 兜底，见 `decision.md` D9
+- `small_gicp` 不再计划：PCL GICP 已经是默认后端（`decision.md` D21），要继续替换得另立决策；
+  `decision.md` D9 里「首版用 PCL GICP + 内置 ICP 兜底」的设想已在 D21 落地
 - `bringup/config/heavy.yaml` 对应装甲兵种，不在 2027 3v3 阵容（步兵×2 + 哨兵×1，
   见 `foray_docs/algorithm_structure.md` §12）；保留为预留配置，不参与验收
 - 2027 场地地图需赛前场地窗口实测；当前以录制包回放验证（无实车，M5 未完成）
@@ -73,6 +80,7 @@ M5b 的承接方 `foray_simulation` 已建成并取证（首次 `OK` 3.78 s、�
 - [ ] 每个新增模块带独立可执行测试
 - [ ] 录包回放 ATE ≤ 5 cm、航向 ≤ 2°（相对起点；仿真回放能力已移出本仓，D16）
 - [ ] 定位初始化 ≤ 5 s；`LocalizationState` ≥ 50 Hz；GICP 5 Hz 且 p99 ≤ 40 ms
+  （p99 缺实车/实图数据，暂以容器基准为参考；GICP 后端已于 2026-10-30 实装，见 `decision.md` D21）
 - [ ] 配准失效 ≤ 200 ms 输出 `DEGRADED`、≤ 1 s 输出 `LOST`，无静默外推
 - [ ] 同源地图 2D/3D 一致率 ≥ 95%，manifest 强校验
 - [ ] 动态物体检出率 ≥ 90%（标注集）

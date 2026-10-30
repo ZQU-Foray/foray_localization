@@ -36,8 +36,8 @@ foray::localization::PoseSourcePolicy parse_policy(const std::string& value) {
 
 LocalizationNode::LocalizationNode(const rclcpp::NodeOptions& options)
     : rclcpp::Node("foray_localization", options), tf_buffer_(get_clock()),
-      tf_listener_(tf_buffer_), aligner_(foray::localization_map::AlignOptions{}),
-      clusterer_(foray::localization_map::ResidualClustererConfig{}), health_() {
+      tf_listener_(tf_buffer_), clusterer_(foray::localization_map::ResidualClustererConfig{}),
+      health_() {
     map_manifest_ = declare_parameter<std::string>("map_manifest", "");
     map_frame_ = declare_parameter<std::string>("map_frame", "map");
     odom_frame_ = declare_parameter<std::string>("odom_frame", "odom");
@@ -65,7 +65,11 @@ LocalizationNode::LocalizationNode(const rclcpp::NodeOptions& options)
     align_options.max_iterations = declare_parameter<int>("align_max_iterations", 10);
     align_options.max_correspondence_distance_m =
         declare_parameter<double>("align_max_correspondence_m", 0.5);
-    aligner_ = foray::localization_map::IcpAligner(align_options);
+    // 后端由编译期开关决定（decision.md D21）。启动时把实际后端打出来，
+    // 免得出现「文档说 GICP、实际跑 ICP」这种只能在事后靠精度异常才发现的情况。
+    aligner_ = foray::localization_map::make_aligner(align_options);
+    RCLCPP_INFO(get_logger(), "配准后端: %s",
+                foray::localization_map::default_aligner_name().c_str());
 
     foray::localization_map::ResidualClustererConfig cluster_config;
     cluster_config.residual_threshold_m = residual_threshold_m_;
@@ -289,7 +293,7 @@ void LocalizationNode::on_align_timer() {
         }
     }
 
-    const auto result = aligner_.align(cloud, map_.cloud, guess);
+    const auto result = aligner_->align(cloud, map_.cloud, guess);
     // 配准失败（有效对应点不足 / 输入为空）时 inlier_ratio 为 0，健康状态会一路退到 LOST。
     // 这条日志是唯一能看出「为什么无效」的地方，不加就只能看到 registration rejected。
     if (result.inlier_ratio <= 0.0) {

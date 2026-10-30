@@ -11,8 +11,13 @@
 #   lint-python     Python 语法/格式（本仓仅剩 bringup launch 的 .py）
 #   lint-c          C/C++ 格式
 #   build-ros2      colcon 构建 + ros2 pkg executables + launch 解析 + colcon test
+#                   （FORAY_WITH_PCL 默认 ON，因此这条作业同时守护 PCL GICP 主路径）
+#   build-nopcl     -DFORAY_WITH_PCL=OFF 的构建与测试，守护内置 ICP 回退路径
 #
 # 更新记录：
+#   - 新增 build-nopcl（决定见 decision.md D21）：FORAY_WITH_PCL=OFF 是显式的降级出口，
+#     没有作业跑它就等于没人知道它还能不能编译。已踩过的教训是同类的 optional 后端
+#     只在一条路径上验证，另一条直到用户遇到才坏。
 #   - 新增 file-hygiene / doc-sync / param-contract / contract-lock 四个作业
 #     （决定见 decision.md D18）。它们把 AGENTS.md 与 README 里原本靠人眼维持的约束变成
 #     可执行断言，依据是 D15 的结论：文档漂移靠人眼 Review 抓不住，只有可执行断言能长期生效。
@@ -257,6 +262,51 @@ jobs:
               || { echo "::error::ros2 pkg executables 缺少 $exe（install RUNTIME 目录应为 lib/<pkg>/）"; exit 1; }
           done
           ros2 launch foray_localization_bringup localization.launch.py --show-args
+
+      - name: 测试 (colcon test)
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          colcon test --event-handlers console_direct+
+          colcon test-result --verbose
+
+  # ---- 无 PCL 回退路径 ----
+  # FORAY_WITH_PCL=OFF 时只编译内置 ICP 后端。这条路径是降级出口（decision.md D21），
+  # 必须有人跑，否则会悄悄腐烂到用户真需要时才炸。只构建 map/ros 两包：其余包与本开关无关。
+  build-nopcl:
+    runs-on: ubuntu-22.04
+    container: ros:humble
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检测是否为 ROS 2 仓库
+        id: detect
+        shell: bash
+        run: |
+          if find . -name package.xml -not -path './.git/*' | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "未发现 ROS 2 package，跳过。"
+          fi
+
+      - name: 安装依赖 (rosdep)
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          apt-get update
+          rosdep update
+          rosdep install -y -r --from-paths . --ignore-src --rosdistro humble
+
+      - name: 构建 (FORAY_WITH_PCL=OFF)
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --symlink-install \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release -DFORAY_WITH_PCL=OFF
 
       - name: 测试 (colcon test)
         if: steps.detect.outputs.found == 'true'
