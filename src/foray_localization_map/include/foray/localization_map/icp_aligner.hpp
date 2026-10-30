@@ -1,8 +1,9 @@
 // Copyright 2026 ZQU-Foray
 //
-// 内置点到点 ICP。默认后端，不依赖 PCL/small_gicp，保证在最小构建环境
-// 与 CI 中也能完成配准与健康状态验证。精度低于 GICP，赛前应优先启用
-// GICP 后端（decision.md D2/D9）。
+// 内置点到点 ICP。不依赖 PCL/small_gicp，保证在最小构建环境与 CI 中也能
+// 完成配准与健康状态验证。默认后端是 PCL GICP（decision.md D21），本类在
+// -DFORAY_WITH_PCL=OFF 的构建里才是实际使用的后端；精度低于 GICP，
+// 仅用于无 PCL 环境与降级排查。
 
 #ifndef FORAY_LOCALIZATION_MAP_ICP_ALIGNER_HPP_
 #define FORAY_LOCALIZATION_MAP_ICP_ALIGNER_HPP_

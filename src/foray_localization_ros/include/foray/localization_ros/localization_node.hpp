@@ -8,7 +8,8 @@
 
 #include "foray/localization/health.hpp"
 #include "foray/localization/pose.hpp"
-#include "foray/localization_map/icp_aligner.hpp"
+#include "foray/localization_map/aligner.hpp"
+#include "foray/localization_map/aligner_factory.hpp"
 #include "foray/localization_map/prior_map.hpp"
 #include "foray/localization_map/residual_clusterer.hpp"
 #include "foray_localization_ros/msg/dynamic_obstacle_array.hpp"
@@ -87,7 +88,8 @@ class LocalizationNode : public rclcpp::Node {
 
     foray::localization_map::PriorMap map_;
     bool has_map_{false};
-    foray::localization_map::IcpAligner aligner_;
+    /// 配准后端由工厂按编译期开关构造（decision.md D21），节点不关心具体实现。
+    std::unique_ptr<foray::localization_map::Aligner> aligner_;
     foray::localization_map::ResidualClusterer clusterer_;
     foray::localization::HealthMonitor health_;
     foray::localization::HealthConfig health_config_;

@@ -15,7 +15,7 @@
 git clone git@github.com:ZQU-Foray/foray_localization.git
 cd foray_localization
 
-# 2. 依赖安装（small_gicp 需按 foray_ws 的 pin 单独构建，见「依赖」）
+# 2. 依赖安装（PCL 由 package.xml 经 rosdep 带入；无 PCL 环境的降级构建见「依赖」）
 rosdep install -y -r --from-paths src --ignore-src --rosdistro humble
 
 # 3. 构建（仓根即 colcon 空间根，全部包在 src/ 下）
@@ -66,7 +66,8 @@ MID360 点云 ──► point_lio（仅里程计）──► T_odom_lidar
 
 - **里程计**：`point_lio` 只提供 `odom → lidar`，不参与地图更新；赛时不做 SLAM。
 - **配准**：`foray_localization_map` 以先验 PCD 地图为目标做 GICP（默认 PCL GICP，5 Hz），
-  输出 `T_map_lidar`、fitness、内点率与残差点。
+  输出 `T_map_lidar`、fitness、内点率与残差点。后端在**编译期**选择：
+  `-DFORAY_WITH_PCL=OFF` 时退回内置点到点 ICP（精度较低，仅用于无 PCL 环境与降级排查）。
 - **融合**：`foray_localization_ros` 由 `T_map_lidar` 与 `T_odom_lidar` 合成
   `map → odom`，以 20 Hz 发布；`LocalizationState` 以 50 Hz 发布。
 - **健康**：状态机 `INITIALIZING → OK ⇄ DEGRADED → LOST`，失效显式上报，**禁止静默外推**。
@@ -90,7 +91,7 @@ CI 的 `dir-layout` 作业按同一规则校验。
 | package | 职责 | 是否依赖 ROS |
 |---|---|---|
 | `foray_localization_core` | 位姿/健康状态机/位姿源仲裁/地图 manifest/几何，纯函数 | 否 |
-| `foray_localization_map` | PCD 先验地图、2D 栅格、GICP 后端、残差聚类 | 否 |
+| `foray_localization_map` | PCD 先验地图、2D 栅格、PCL GICP 后端（内置 ICP 兜底）、残差聚类 | 否 |
 | `foray_localization_ros` | 节点、TF、QoS、消息/服务、map_server、适配器 | 是 |
 | `foray_localization_relocalization` | 可选 ONNX Runtime（CPU）全局重定位（原 `_place`，已更名），默认 OFF | 可选 |
 | `foray_localization_bringup` | 三兵种 launch / params（`heavy.yaml` 为装甲兵种预留，2027 3v3 不使用） | 是 |
@@ -153,13 +154,13 @@ CI 的 `dir-layout` 作业按同一规则校验。
 | `lidar_timeout_sec` | `0.2` | 点云断流超过该时长即视为无有效配准（s） |
 | `warmup_frames` | `3` | `INITIALIZING → OK` 所需连续好帧数 |
 | `recover_frames` | `3` | `DEGRADED → OK` 所需连续好帧数 |
-| `align_max_iterations` | `10` | GICP 最大迭代次数 |
-| `align_max_correspondence_m` | `0.5` | GICP 最大对应点距离（m） |
+| `align_max_iterations` | `10` | 配准后端（默认 PCL GICP）最大迭代次数 |
+| `align_max_correspondence_m` | `0.5` | 配准后端最大对应点距离（m） |
 | `min_cluster_size` | `5` | 有效残差簇的最小点数 |
 | `max_cluster_size` | `500` | 有效残差簇的最大点数（更大视为地图差异） |
 | `state_rate_hz` | `50.0` | `LocalizationState` 发布频率（Hz） |
 | `tf_rate_hz` | `20.0` | `map → odom` TF 发布频率（Hz） |
-| `align_rate_hz` | `5.0` | GICP 配准频率上限（Hz） |
+| `align_rate_hz` | `5.0` | 配准频率上限（Hz） |
 | `obstacle_rate_hz` | `10.0` | 动态物体话题发布频率（Hz） |
 | `cloud_topic` | `/livox/lidar` | 输入点云话题 |
 | `odom_topic` | `/aft_mapped_to_init` | 输入里程计话题 |
@@ -225,11 +226,18 @@ source: "RMUL 2027 field survey"
 | 类型 | 依赖 |
 |---|---|
 | **自研仓** | X2（foray_interfaces）· L1（foray_platform）· L2 |
-| **第三方** | Eigen3 · yaml-cpp · PCL（GICP，可选但推荐）· small_gicp（可选替换后端）· point_lio（pin）· ONNX Runtime（可选，默认 OFF） |
+| **第三方** | Eigen3 · yaml-cpp · PCL（GICP 默认后端，必需，≥1.10）· point_lio（pin）· ONNX Runtime（可选，默认 OFF） |
 
 - `point_lio` 以独立进程运行，按 `foray_ws` 的 pin 构建；本仓只消费其话题。
-- `small_gicp` 未安装时自动回退到内置点到点 ICP（精度较低，仅用于调试/降级）。
+- PCL 由 `package.xml` 的 `libpcl-all-dev` 经 rosdep 安装，是默认配准后端 GICP 的依赖；
+  `colcon build --cmake-args -DFORAY_WITH_PCL=OFF` 退回内置点到点 ICP（精度较低，仅用于
+  无 PCL 的最小构建与降级排查）。这是**编译期**选择，不做运行时静默回退：
+  找不到 PCL 时 configure 直接失败，而不是悄悄换成另一个后端（decision.md D21）。
 - `ONNX Runtime` 仅 `foray_localization_relocalization` 使用，`FORAY_WITH_ONNX=ON` 时编译。
+- 验证过的构建环境是 Linux（ROS 2 Humble；CI 用 `ros:humble` 容器）。Windows 上
+  `scripts/ci/` 的四道门禁与 pytest 自检可以正常跑（`.gitattributes` 已把检出换行钉成 LF，
+  门禁按字节判 CRLF，不依赖平台的换行翻译），但 **ROS 2 + PCL 的 Windows 构建从未验证过**；
+  要在 Windows 上试，先用 `-DFORAY_WITH_PCL=OFF` 把 PCL 摘掉，别一上来就卡在找 PCL。
 
 ## 纪律
 
