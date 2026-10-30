@@ -482,6 +482,11 @@ Compensation（明确记下失去的能力）:
 - 失去 **仓内建图与地图校验工具**（`make_map.py` / `validate_map.py` /
   `accumulate_pcd.py`）：地图改在仓外制作，本仓只按 `manifest.yaml` 契约加载并校验 SHA-256。
 - 失去 **离车精度回归**（ATE/RPE）：精度验收移到实车与下游仿真仓，本仓不再提供自动化精度断言。
+  > 现况（2026-10-30）：承接方 `foray_simulation` 已建成，并把这条精度验收写成自己的需求 A2
+  > （本仓在仿真里 10 s 内状态 `OK`、位置误差 < 0.30 m、朝向误差 < 5°），已取证：首次 `OK`
+  > 3.78 s、位姿误差 0.083 m、`yaw` 0.012°，95 s 采样 4737 条状态中 4423 条 `OK` 且零
+  > `DEGRADED`/`LOST`。因此本仓的回归通道是「容器内 `colcon test` 跑全套单元测试（2026-10-30
+  > 实测 73 tests / 0 failures）+ 需要时跑 A2 整链」，不需要把仿真能力搬回本仓。
 
 Alternatives:
 - 保留 `foray_localization_tools` 只删 `foray_localization_sim`（用户评估后否决）；
