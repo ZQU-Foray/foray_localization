@@ -11,8 +11,9 @@
 - [ ] **M5 HIL 验证**：录包回放、ATE/RPE、DEGRADED/LOST 时序验证
   - ~~**M5a 离车仿真闭环**~~：已删除（2026-10-27，见 `decision.md` D16）——合成点云回放、
     真值里程计注入、ATE/RPE 评估脚本与 CI `sim-smoke` 整体移出本仓
-  - [ ] **M5b Gazebo 联调**：官方 `rmu_gazebo_simulator` / `pb_rm_simulation` 场景接入——
-    场景与话题映射在**本仓之外**（下游仿真仓）完成，本仓只提供可订阅的定位节点（`decision.md` D16）
+  - [x] **M5b Gazebo 联调**：由下游仿真仓 `foray_simulation` 承接并已取证（其需求 A2 就是本仓的
+    仿真验收口径：10 s 内状态 `OK`、位置误差 < 0.30 m、朝向误差 < 5°）——场景与话题映射在
+    **本仓之外**完成，本仓只提供可订阅的定位节点（`decision.md` D16）
   - [ ] **M5c 实车 bag 验证**：现场录包后复算阈值并写回 config
 - [ ] **M6 调参与交付**：2027 场地地图、阈值标定、运维文档、兵种 launch 验收（3v3：步兵/哨兵）
 - [x] **M7 布局与命名规范化**：包迁入 `src/`（仓根即 colcon 空间根，现 5 个包）、
@@ -48,15 +49,13 @@ DELIVERED：5 个 package 全部位于 `src/`（仓根即 colcon 空间根），
 `lint-python` / `lint-c` / `build-ros2`（作业清单以 `.github/workflows/ci.yml` 的 `jobs`
 为准，此处只是便于扫读的复述；此前写成「8 个」并漏列 `gate-selftest` 正是靠人眼同步
 数字的产物）。
-M5b（Gazebo 场景，下游仓）/ M5c（实车 bag）仍待外部条件。
-已知限制：本机无 ROS 2/colcon，`colcon build` 与 C++ 测试回归由 CI 执行。
-
-## Before Snapshot
-
-commit hash:   （首次提交）
-branch:        dev
-modified files: 6 个 package 新文件（见 git status）
-risk level:    L1
+M5b 的承接方 `foray_simulation` 已建成并取证（首次 `OK` 3.78 s、位姿误差 0.083 m、
+`yaw` 0.012°，95 s 采样 4737 条状态中 4423 条 `OK`、零 `DEGRADED`/`LOST`）；M5c（实车 bag）
+仍待实车条件。
+验证环境：宿主无 ROS 2 / colcon / PCL，`colcon build` 与 `colcon test` 一律在容器里跑——
+镜像 `foray_sim:humble-fortress`（Humble + Gazebo Fortress，含 PCL 1.12、gtest、colcon），
+本仓与仿真仓一起挂到 `/ws/src/`。2026-10-30 实测：5 个包构建 51 s，`colcon test-result --all`
+报 73 tests / 0 errors / 0 failures。CI 的 `build-ros2` 保留，防的是「只在容器里验过」。
 
 ## 模糊点与待确认项
 
@@ -66,15 +65,6 @@ risk level:    L1
   见 `foray_docs/algorithm_structure.md` §12）；保留为预留配置，不参与验收
 - 2027 场地地图需赛前场地窗口实测；当前以录制包回放验证（无实车，M5 未完成）
 - 自动全局重定位（ONNX）为 P2，默认关闭；许可证决策不在本期范围
-
-## Vector Backend Status
-
-Backend: Markdown
-Status:  ready
-Environment: 仓库内 Markdown 文档（无外部向量后端）
-Index: 本仓 `README.md` / `tree.md` / `decision.md`
-Initialization: 2026-02-19
-Commit: （首次提交）
 
 ## Acceptance Criteria
 

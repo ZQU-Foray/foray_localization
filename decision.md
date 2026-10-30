@@ -2,6 +2,12 @@
 
 > 记录 fork patch、换版本、**破坏性接口变更**、架构取舍。
 > 格式见 `foray_docs/repository_structure.md` §7.2。
+>
+> 本文件自定的补充约定（2026-10-30）：条目之间用 `---` 分隔；`Context` / `Decision` / `Reason`
+> 必填，`Alternatives` / `Rejected` / `Evidence` / `Consequences` / `Status` 按需。
+> **编号只增不重排**：条目作废时保留原号并标 `Status: superseded by Dxx`，空号同样保留
+> （D17 的缘由见 D18 编号说明）。决策只在这里写一次——`README.md` / `plan.md` / `tree.md`
+> 需要时引用编号，不复述理由。
 
 ---
 
@@ -276,37 +282,28 @@ Rejected:
 ## D11 仿真闭环放在本仓、但不引入 Gazebo 构建依赖
 
 Status: **superseded by D16**（2026-10-27：仿真闭环与离线工具已整体移出本仓）。
-以下原文保留留痕，其中 `foray_localization_sim` / `foray_localization_tools` /
-`bringup/config/sim.yaml` / `docs/simulation.md` / CI `sim-smoke` 均已不存在。
+`foray_localization_sim` / `foray_localization_tools` / `bringup/config/sim.yaml` /
+`docs/simulation.md` / CI `sim-smoke` 均已不存在，删除理由与失去的能力见 D16。
 
 Date: 2026-10-25
 
-Context: M5 HIL 验证需要录包/仿真回放与 ATE/RPE、DEGRADED/LOST 时序验证，
-但此时无实车、机载无 GPU，且官方 Gazebo 场景（`rmu_gazebo_simulator` /
-`pb_rm_simulation`）版本演进快。
+Context: M5 HIL 验证需要录包/仿真回放与 ATE/RPE、DEGRADED/LOST 时序验证，但此时无实车、
+机载无 GPU，且官方 Gazebo 场景（`rmu_gazebo_simulator` / `pb_rm_simulation`）版本演进快。
 
-Decision:
-- 本仓只提供 `foray_localization_sim`（真值里程计注入 + 模式化 launch）
-  与 `foray_localization_tools` 的合成回放/评估脚本；Gazebo 场景与
-  Mid360 插件不入仓、不进构建依赖，按 `docs/simulation.md` 外部复现。
-- 合成闭环走「先验 PCD 射线投射 → 回放 + 定位节点 → `eval_trajectory.py`
-  断言 ATE/OK 占比」的路径，CI `sim-smoke` 作业无 GPU 可跑。
-- 仿真阈值单独放 `bringup/config/sim.yaml`，不参与默认实车启动。
+Decision: 本仓只提供 `foray_localization_sim`（真值里程计注入 + 模式化 launch）与
+`foray_localization_tools` 的合成回放/评估脚本；Gazebo 场景与 Mid360 插件不入仓、不进构建
+依赖，按 `docs/simulation.md` 外部复现。合成闭环走「先验 PCD 射线投射 → 回放 + 定位节点 →
+`eval_trajectory.py` 断言 ATE/OK 占比」，CI `sim-smoke` 无 GPU 可跑；仿真阈值单放
+`bringup/config/sim.yaml`，不参与默认实车启动。
 
-Reason:
-- `.foray-layer` 依赖方向与「定位层不感知数据来源」的接口约定均不破：
-  定位节点只认 `/livox/lidar`、`/aft_mapped_to_init`、TF。
-- Gazebo 进仓会把渲染/物理依赖带进定位层构建，与机载无 GPU 约束冲突。
-- 阈值只能初标：仿真点云无动态物体、无遮挡，且多为机械式扫描，
-  实车结论仍以 `docs/simulation.md` §5 的现场标定流程为准。
+Reason: 定位节点只认 `/livox/lidar`、`/aft_mapped_to_init`、TF，既不破 `.foray-layer` 的
+依赖方向，也不破「定位层不感知数据来源」的接口约定；Gazebo 进仓会把渲染/物理依赖带进定位层
+构建，与机载无 GPU 约束冲突；仿真阈值又只能初标（无动态物体、无遮挡、多为机械式扫描），
+实车结论仍以现场标定为准。
 
-Alternatives:
-- 把 Gazebo 场景与插件 vendor 进本仓
-- 只等实车，暂不做离车验证
-
-Rejected:
-- vendor 增加升级/审计成本，且与 `foray_ws` pin 策略冲突
-- 无实车期间没有任何可重复回归，M5 会长期空转
+Alternatives: 把 Gazebo 场景与插件 vendor 进本仓；只等实车、暂不做离车验证。
+Rejected: vendor 增加升级/审计成本且与 `foray_ws` pin 策略冲突；无实车期间没有任何可重复
+回归，M5 会长期空转。
 
 ---
 
@@ -340,6 +337,8 @@ Alternatives:
 Rejected:
 - 平铺布局与组织约定冲突，后续每个仓都要写例外；
 - `place` 与 `_relocalization` 并存会造成跨仓命名漂移，越晚改越贵。
+
+---
 
 ## D13 Python 目标版本固定为 3.10
 
@@ -400,6 +399,8 @@ Rejected:
 - 停发消息把「失效」变成不可观测事件，且与 `transient_local` 的语义纠缠；
 - 隐式判据正是审计里出事的形式——文档写过「必须检查」，实现却没有单一的检查点。
 
+---
+
 ## D15 参数文档由脚本看守：README ↔ `declare_parameter` ↔ 兵种配置
 
 Status: **校验已恢复（D18，2026-10-28）**——原 `check_param_consistency.py` 与其 pytest、
@@ -458,6 +459,8 @@ Decision:
 - CI 只保留真实执行的 4 个作业：`dir-layout` / `lint-python` / `lint-c` / `build-ros2`；
   删除 `sim-smoke`（恒跳过）与 `test-python`（已无 `test_*.py`）。
   `dir-layout` 的豁免词表只留 `*_bringup`。
+  > 现况（2026-10-28 起）：CI 为 9 个作业。此处 4 个是当时删减后的最小集，D18 又补了
+  > 四道零依赖门禁与 `gate-selftest`；各作业清单以 `.github/workflows/ci.yml` 为准。
 - 保留 `pyproject.toml`：`localization.launch.py` 仍是 Python，ruff/black 仍需目标版本 3.10。
 - 验证责任重新划分：本仓 CI 断言「可构建 + 可执行文件安装位置 + launch 参数可解析 +
   `colcon test`」，**不**断言定位精度；车下验证改为录制包回放（README「无实车验证」）。
@@ -479,6 +482,11 @@ Compensation（明确记下失去的能力）:
 - 失去 **仓内建图与地图校验工具**（`make_map.py` / `validate_map.py` /
   `accumulate_pcd.py`）：地图改在仓外制作，本仓只按 `manifest.yaml` 契约加载并校验 SHA-256。
 - 失去 **离车精度回归**（ATE/RPE）：精度验收移到实车与下游仿真仓，本仓不再提供自动化精度断言。
+  > 现况（2026-10-30）：承接方 `foray_simulation` 已建成，并把这条精度验收写成自己的需求 A2
+  > （本仓在仿真里 10 s 内状态 `OK`、位置误差 < 0.30 m、朝向误差 < 5°），已取证：首次 `OK`
+  > 3.78 s、位姿误差 0.083 m、`yaw` 0.012°，95 s 采样 4737 条状态中 4423 条 `OK` 且零
+  > `DEGRADED`/`LOST`。因此本仓的回归通道是「容器内 `colcon test` 跑全套单元测试（2026-10-30
+  > 实测 73 tests / 0 failures）+ 需要时跑 A2 整链」，不需要把仿真能力搬回本仓。
 
 Alternatives:
 - 保留 `foray_localization_tools` 只删 `foray_localization_sim`（用户评估后否决）；
@@ -488,6 +496,8 @@ Alternatives:
 Rejected:
 - 用户明确选择 C 方案：连离线工具包一起删除，只留五个核心包；
 - 修补恒跳过的作业会把它从「假绿」变成「真跑合成闭环」，与删除目标相反。
+
+---
 
 ## D18 文档与接口漂移改由零依赖 CI 门禁看守：`scripts/ci/`
 
@@ -582,6 +592,8 @@ Rejected:
 状态：已执行（2026-10-28）。`param-contract` 同时补上了 D16 记下的那笔「失去参数一致性
 门禁」的欠账，且不再依赖被删除的 Python 工具包。
 
+---
+
 ## D19 一次性分析报告不入库，门禁自检改用专门的探针文件
 
 Context: `docs/audit-2026-10-27.md` 是一次性代码审计快照（P0/P1/P2 问题与修复状态）。
@@ -603,3 +615,42 @@ Consequences:
 - 已发布的历史提交里仍有那份审计报告，不重写历史；只从当前树移除。
 
 状态：已执行（2026-10-28）。
+
+---
+
+## D20 lint 红灯是契约问题，不是格式洁癖
+
+Date: 2026-10-30
+
+Context: PR #3 首次真实运行 CI（run 40913190187），7 个作业通过，`lint-c`（10 s）与
+`lint-python`（13 s）红：
+`src/foray_localization_ros/src/localization_node.cpp:345:42` 与 `:346:72` 报
+`code should be clang-formatted [-Wclang-format-violations]`；`ruff` 报 5 次
+`EXE001`（Shebang is present but file is not executable），指向 `scripts/ci/` 全部五个脚本。
+值得记下的是本地当时的判断：用 clang-format 23.1.4 跑 `--dry-run` 发现 HEAD 版本同样报错，
+于是判定「属版本差异、不是本次引入」——**这个判断是错的**。那两行本来就不符合
+`.clang-format` 的 `ColumnLimit: 100`，只是本地工具版本的语气不同。
+
+Decision:
+- 按 `.clang-format` 重排 `localization_node.cpp:345-346`：条件表达式合并为一行、
+  续行与括号对齐（2 insertions / 3 deletions），`clang-format --dry-run --Werror` 归零。
+- `scripts/ci/*.py` 五个脚本统一 `chmod 100755`：`check_contracts.py` / `check_params.py` /
+  `check_style.py` / `check_tree_doc.py` / `test_guards.py` 都带 shebang，可执行位是它们
+  声明的调用方式。
+- `test_guards.py` 按 black 格式化（`CONTRACT_PROBE` 注入块与两处 `_mutated(...)` 调用按
+  88 列拆行，共 15 行变动），格式化后自检仍 11/11 通过、`black --check` 与 `ruff check .`
+  全仓无告警。
+
+Reason:
+- **本地绿不等于 CI 绿**：格式判据是 CI 装的那套工具与版本，本地版本差异不能用来论证
+  「不是我的问题」。这次误判差点让一条真违规被当成噪音放过——而门禁被当成噪音的那一刻，
+  它就等于不存在（D18 的同一逻辑）。
+- shebang 与可执行位是一件事的两半：只写 shebang 不给权限，等于声明了调用方式又拒绝被调用。
+  同类隐患在门禁脚本上尤其危险，因为它们正是「别人要随手跑一下」的东西。
+- 门禁代码也要过它自己的标准。自检脚本被自己管辖的工具格式化，是「门禁可被怀疑」的自然延伸。
+
+Alternatives: 给 ruff 加 `per-file-ignores` 静音 `EXE001`；在那两行前后加 `// clang-format off`。
+Rejected: 静音会把「脚本不可执行」这一真实缺陷永久藏起来；`clang-format off` 让该文件成为
+格式飞地，下一个人改这段代码仍会踩同一处。
+
+状态：已执行（2026-10-30）。修复提交 `2562ec3`，CI run 40915429011 九作业全绿。

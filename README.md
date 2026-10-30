@@ -44,7 +44,11 @@ ros2 bag play <recorded_bag> --clock
   回到 `INITIALIZING` 并收敛到 `OK`。
 - 建图与地图验证在**本仓之外**完成；本仓只消费符合 `manifest.yaml` 契约的地图（见「地图」）。
 - CI 只断言「可构建 + 可执行文件安装位置 + launch 参数可解析 + `colcon test` 通过」，
-  **不对定位精度作断言**——精度验收在实车与下游仿真仓完成。
+  **不对定位精度作断言**——精度验收在两处：实车录制包，与下游仿真仓 `foray_simulation`
+  （它的需求 A2 就是本仓在仿真里的验收口径：10 s 内状态 `OK`、位置误差 < 0.30 m、
+  朝向误差 < 5°）。
+- 本地跑单元测试不需要装 ROS：容器 `foray_sim:humble-fortress`（Humble + Gazebo Fortress，
+  含 PCL 1.12）把本仓挂到 `/ws/src/`，在里面 `colcon build` / `colcon test` 即可。
 
 ## 定位方案
 
@@ -108,7 +112,7 @@ CI 的 `dir-layout` 作业按同一规则校验。
 
 | 名称 | 类型 | 说明 |
 |---|---|---|
-| `/localization/relocalize` | `foray_localization_ros/Relocalize` | 注入 `map → base_link` 初值，状态机回到 `INITIALIZING` 直到收敛 |
+| `/localization/relocalize` | `foray_localization_ros/Relocalize` | 注入 `map → base_frame` 初值（默认 `base_footprint`），状态机回到 `INITIALIZING` 直到收敛 |
 
 ### TF
 
@@ -116,7 +120,7 @@ CI 的 `dir-layout` 作业按同一规则校验。
 |---|---|---|
 | `map → odom` | `foray_localization_ros` | 20 Hz |
 | `odom → lidar` | `point_lio` | 100–200 Hz |
-| `base_link → lidar` | URDF / `robot_state_publisher`（静态） | — |
+| `base_footprint → lidar` | URDF / `robot_state_publisher`（静态） | — |
 
 ### 关键参数
 

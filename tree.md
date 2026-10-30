@@ -9,7 +9,7 @@
 - 工程包（C++ 库/节点）固定骨架：`include/` + `src/` + `test/` + `CMakeLists.txt` + `package.xml`；
   `*_bringup`（装配）按需精简
 - C++ 可执行小工具放 `apps/`，数据/部署资产放 `data/`；**不得出现 `tools/` 目录**
-- 构建产物 `build/`、`install/`、`log/`、本地工具链与缓存 `local/` 均在 `.gitignore`，
+- 构建产物 `build/`、`install/`、`log/` 与本地缓存 `local/` 均在 `.gitignore`，不记录（见「记录约束」）；
   迁入 `src/` 后它们不再与源码同层
 
 ## 命名规则
@@ -27,19 +27,19 @@
 .
 ├── README.md                      本仓定位、接口、坐标系、地图与健康契约
 ├── AGENTS.md                      AI 协作规范
-├── plan.md                        开发计划（M0–M7、P2 可选）
-├── decision.md                    关键工程决策（D0–D18）
+├── plan.md                        开发计划（M0–M8、P2 可选；完成状态以文件内勾选为准）
+├── decision.md                    关键工程决策（D1–D19；D17 为空号，缘由见 D18 编号说明）
 ├── tree.md                        本文件
 ├── CODEOWNERS                     Review 自动分派
 ├── .foray-layer                   所属层与依赖边界（CI 校验）
 ├── .gitignore
 ├── .clang-format                  C/C++ 格式基线，CI `lint-c` 依此校验
 ├── .gitattributes                 检出侧强制 LF，与 check_style.py 的 LF 断言配套
-├── pyproject.toml                 Python 配置（ruff/black，目标版本 3.10；仅 bringup launch 使用）
+├── pyproject.toml                 Python 配置（ruff/black，目标版本 3.10；覆盖全仓 Python，含 scripts/ci/）
 ├── contracts.sha256               msg/srv/action 接口指纹快照，CI `contract-lock` 依此校验
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                 组织 CI 模板（空仓绿灯，有包构建）
+│       └── ci.yml                 CI 作业定义（9 个：布局/门禁/lint/构建，清单以此文件为准）
 │
 ├── scripts/                       CI 门禁脚本（仓级；仅标准库，不引入包依赖）
 │   └── ci/
