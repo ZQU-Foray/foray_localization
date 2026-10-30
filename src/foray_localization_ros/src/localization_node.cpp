@@ -290,6 +290,14 @@ void LocalizationNode::on_align_timer() {
     }
 
     const auto result = aligner_.align(cloud, map_.cloud, guess);
+    // 配准失败（有效对应点不足 / 输入为空）时 inlier_ratio 为 0，健康状态会一路退到 LOST。
+    // 这条日志是唯一能看出「为什么无效」的地方，不加就只能看到 registration rejected。
+    if (result.inlier_ratio <= 0.0) {
+        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                             "配准无有效对应: %s (source=%zu target=%zu iterations=%d)",
+                             result.error.c_str(), cloud.size(), map_.cloud.size(),
+                             result.iterations);
+    }
 
     std::lock_guard<std::mutex> lock(mutex_);
     foray::localization::RegistrationSample sample;
@@ -334,9 +342,8 @@ void LocalizationNode::publish_state() {
         sample.inlier_ratio = 0.0;
         health_status_ = health_.update(sample, now_ns, last_odom_ns_);
     } else if (has_odom_ && health_config_.lidar_timeout_sec > 0.0 &&
-               (last_cloud_rx_ns_ <= 0 ||
-                static_cast<double>(now_ns - last_cloud_rx_ns_) / 1e9 >
-                    health_config_.lidar_timeout_sec)) {
+               (last_cloud_rx_ns_ <= 0 || static_cast<double>(now_ns - last_cloud_rx_ns_) / 1e9 >
+                                              health_config_.lidar_timeout_sec)) {
         // 激光断流：点云停下后配准回调不再运行（!has_cloud_ 提前 return），
         // 若这里不显式喂不可用样本，健康状态会冻结在 OK，TF 会按旧 map→odom 继续外推，
         // 正是 README 明令禁止的「静默外推」。状态机自身负责 DEGRADED→LOST 的时限。

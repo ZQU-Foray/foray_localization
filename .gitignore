@@ -41,5 +41,8 @@ recordings/
 local/
 *.local.yaml
 
+# ---- 一次性分析报告（本地留存，不入库；口径见 decision.md D19）----
+docs/audit-*.md
+
 # ---- 工具状态 ----
 .dsh/

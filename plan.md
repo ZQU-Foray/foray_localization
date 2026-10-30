@@ -2,41 +2,53 @@
 
 ## 任务列表
 
-- [x] **M0 骨架与文档**：6 个 package 目录/CMake/package.xml、CI 接入、README/tree/decision 对齐
+- [x] **M0 骨架与文档**：package 目录/CMake/package.xml、CI 接入、README/tree/decision 对齐
+  （M0 时 6 个包；仿真与离线工具包已于 2026-10-27 移除，现 5 个，见 `decision.md` D16）
 - [x] **M1 里程计与地图管线**：point_lio 话题接入、`build_map`/`validate_map`、manifest 格式冻结
 - [x] **M2 核心与配准**：健康状态机、位姿源仲裁、manifest 校验、GICP（PCL 后端 + ICP 兜底）、残差点
 - [x] **M3 ROS 层**：LocalizationState/MapMeta/DynamicObstacle/Relocalize 消息、主节点、map_server、TF/QoS
 - [x] **M4 动态物体与重定位**：残差聚类发布、Relocalize 服务与状态机联动、允许动态区域
-- [ ] **M5 HIL 验证**：录包/仿真回放、ATE/RPE、DEGRADED/LOST 时序验证
-  - [x] **M5a 离车仿真闭环**：合成点云回放、真值里程计注入、ATE/RPE 评估、CI smoke（`docs/simulation.md`）
-  - [ ] **M5b Gazebo 联调**：官方 `rmu_gazebo_simulator` / `pb_rm_simulation` 场景接入
+- [ ] **M5 HIL 验证**：录包回放、ATE/RPE、DEGRADED/LOST 时序验证
+  - ~~**M5a 离车仿真闭环**~~：已删除（2026-10-27，见 `decision.md` D16）——合成点云回放、
+    真值里程计注入、ATE/RPE 评估脚本与 CI `sim-smoke` 整体移出本仓
+  - [ ] **M5b Gazebo 联调**：官方 `rmu_gazebo_simulator` / `pb_rm_simulation` 场景接入——
+    场景与话题映射在**本仓之外**（下游仿真仓）完成，本仓只提供可订阅的定位节点（`decision.md` D16）
   - [ ] **M5c 实车 bag 验证**：现场录包后复算阈值并写回 config
 - [ ] **M6 调参与交付**：2027 场地地图、阈值标定、运维文档、兵种 launch 验收（3v3：步兵/哨兵）
-- [x] **M7 布局与命名规范化**：7 个包迁入 `src/`（仓根即 colcon 空间根）、
+- [x] **M7 布局与命名规范化**：包迁入 `src/`（仓根即 colcon 空间根，现 5 个包）、
   `foray_localization_place` → `foray_localization_relocalization`、CI `dir-layout` 作业、
   文档与配置同步（见 `decision.md` D12）
   - [x] **M7a CI 首次真实运行修复**：补仓根 `requirements.txt`（test-python 缺 PyYAML）、
     清 ruff / clang-format 违规、脚本记录 100755、`pyproject.toml` 固定 Python 3.10
-    （见 `decision.md` D13）
-- [x] **M7b 审计报告修复（`docs/audit-2026-10-27.md`）**
+    （见 `decision.md` D13）；`requirements.txt` 与 `test-python` 已于 2026-10-27 删除（D16）
+- [x] **M7b 审计报告修复**（报告为一次性分析，本地留存、不入库；口径见 `decision.md` D14）
   - [x] **P0 A1** 可执行文件装到 `lib/<pkg>`，`ros2 run` / `launch` 恢复（`3538e2a`）
   - [x] **P0 A2** 健康状态对时间戳小幅反序容错，去掉 `age_seconds = +inf` 的永久 LOST（`25b622c`）
   - [x] **P0 A3** 仿真射线投射改用传感器系点云，合成点云随位姿变化（`99da264`）
   - [x] **P1 B1** 点云断流显式降级：`lidar_timeout_sec` + `publish_state()` 兜底（`42c13c9`）
   - [x] **P1 B2** `LocalizationState.pose_valid`：`LOST` / `INITIALIZING` 显式 `false`，
     README 写入「必须检查」履约约定（`decision.md` D14）
-  - [x] **P1 B3** README 参数表按实现回写 + `check_param_consistency.py` 在 CI 交叉校验
-    「README ↔ `declare_parameter` ↔ `bringup/config/*.yaml`」，`tree.md` 修正节点 main 文件名
-    （`decision.md` D15）
+  - [x] **P1 B3** README 参数表按实现回写（原 `check_param_consistency.py` 随工具包删除，D16；
+    该约束已由 CI `param-contract` 作业以零依赖方式恢复，D18），
+    `tree.md` 修正节点 main 文件名（`decision.md` D15）
   - [ ] **P2 C1/C2/C3** converged 判据、首帧/重定位对应距离、launch 级集成测试 —— 未开工
+- [x] **M8 文档与接口漂移门禁**：仓级 `scripts/ci/` 四个零依赖脚本（`check_style` /
+  `check_contracts` / `check_params` / `check_tree_doc`）、`contracts.sha256` 接口快照、
+  CI 四个作业（`file-hygiene` / `doc-sync` / `param-contract` / `contract-lock`），
+  `tree.md` 双向一致（见 `decision.md` D18）
 - [ ] **P2 可选**：ONNX Runtime CPU 全局重定位（默认 OFF）
 
 ## 当前 Agent State
 
-DELIVERED：7 个 package 全部位于 `src/`（仓根即 colcon 空间根），重定位包已更名为
-`foray_localization_relocalization`。离车仿真闭环已落地：合成回放 → 定位节点 →
-`eval_trajectory.py` 断言 ATE/OK 占比，CI `sim-smoke` / `dir-layout` 覆盖。
-M5b（Gazebo 场景）/ M5c（实车 bag）仍待外部条件。
+DELIVERED：5 个 package 全部位于 `src/`（仓根即 colcon 空间根），重定位包已更名为
+`foray_localization_relocalization`。2026-10-27 按「只保留核心定位算法」移除合成仿真与
+离线工具（`decision.md` D16）：无 `sim-smoke`、无建图/评估脚本。车下验证改为录制包回放。
+2026-10-28 补上文档与接口门禁（`decision.md` D18），CI 共 9 个作业：`dir-layout` /
+`file-hygiene` / `doc-sync` / `param-contract` / `contract-lock` / `gate-selftest` /
+`lint-python` / `lint-c` / `build-ros2`（作业清单以 `.github/workflows/ci.yml` 的 `jobs`
+为准，此处只是便于扫读的复述；此前写成「8 个」并漏列 `gate-selftest` 正是靠人眼同步
+数字的产物）。
+M5b（Gazebo 场景，下游仓）/ M5c（实车 bag）仍待外部条件。
 已知限制：本机无 ROS 2/colcon，`colcon build` 与 C++ 测试回归由 CI 执行。
 
 ## Before Snapshot
@@ -52,7 +64,7 @@ risk level:    L1
 - `small_gicp` 尚未在 `foray_ws` pin；首版用 PCL GICP + 内置 ICP 兜底，见 `decision.md` D9
 - `bringup/config/heavy.yaml` 对应装甲兵种，不在 2027 3v3 阵容（步兵×2 + 哨兵×1，
   见 `foray_docs/algorithm_structure.md` §12）；保留为预留配置，不参与验收
-- 2027 场地地图需赛前场地窗口实测；当前以仿真/录包验证（M5 未完成）
+- 2027 场地地图需赛前场地窗口实测；当前以录制包回放验证（无实车，M5 未完成）
 - 自动全局重定位（ONNX）为 P2，默认关闭；许可证决策不在本期范围
 
 ## Vector Backend Status
@@ -69,7 +81,7 @@ Commit: （首次提交）
 - [ ] 本仓能独立 `colcon build`（无代码时跳过）
 - [ ] CI 绿灯
 - [ ] 每个新增模块带独立可执行测试
-- [ ] 录包/仿真回放 ATE ≤ 5 cm、航向 ≤ 2°（相对起点）
+- [ ] 录包回放 ATE ≤ 5 cm、航向 ≤ 2°（相对起点；仿真回放能力已移出本仓，D16）
 - [ ] 定位初始化 ≤ 5 s；`LocalizationState` ≥ 50 Hz；GICP 5 Hz 且 p99 ≤ 40 ms
 - [ ] 配准失效 ≤ 200 ms 输出 `DEGRADED`、≤ 1 s 输出 `LOST`，无静默外推
 - [ ] 同源地图 2D/3D 一致率 ≥ 95%，manifest 强校验

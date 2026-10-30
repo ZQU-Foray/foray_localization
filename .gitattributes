@@ -1,0 +1,25 @@
+# 换行符与编码统一由 git 保证，而不是由每个开发者的 core.autocrlf 决定。
+#
+# 为什么需要它：`scripts/ci/check_style.py` 断言仓库内一律 LF。若只在检查侧强制、
+# 不约束检出侧，Windows 开发者（`core.autocrlf=true`）会看到一份「自己没改过却报红」
+# 的门禁——文件在 git 里确实是 LF，但他工作区里是 CRLF。门禁一旦开始误报，
+# 就会被当成噪音绕过，这比没有门禁更糟。所以在检出侧就把 LF 钉死。
+* text=auto eol=lf
+
+# 二进制资产不参与换行符归一化（与 check_style.py 的 BINARY_SUFFIXES 一一对应：
+# 未列出的后缀一律按文本检查，宁可让新类型文件被检查到，也不要静默跳过）。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.pgm binary
+*.pcd binary
+*.stl binary
+*.dae binary
+*.bag binary
+*.db3 binary
+*.mcap binary
+*.so binary
+*.a binary
+*.o binary
