@@ -18,9 +18,12 @@ namespace foray::localization {
 /// 赛前必须用录包标定后写入 bringup 配置（见 decision.md D3/D9）。
 struct HealthConfig {
     /// 进入 OK 的平均残差上限。
-    double ok_mean_residual_m{0.10};
+    /// 不能低于先验地图自身的离散度：地图按 0.25 m 体素降采样后，
+    /// 即使配准完全收敛，最近邻残差也有约 0.10 m（仿真实测 0.1015–0.1026 m）。
+    /// 旧默认值 0.10 恰好在基线之下，会把完美配准判成不合格（decision.md D22）。
+    double ok_mean_residual_m{0.15};
     /// DEGRADED 可接受的平均残差上限；超过即视为不可用。
-    double degraded_mean_residual_m{0.20};
+    double degraded_mean_residual_m{0.30};
     /// 进入 OK 的内点率下限。
     double ok_inlier_ratio{0.55};
     /// DEGRADED 的内点率下限。

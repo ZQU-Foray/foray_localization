@@ -49,9 +49,9 @@ LocalizationNode::LocalizationNode(const rclcpp::NodeOptions& options)
     verify_map_hashes_ = declare_parameter<bool>("verify_map_hashes", true);
     pose_source_param_ = declare_parameter<std::string>("pose_source", "auto");
 
-    health_config_.ok_mean_residual_m = declare_parameter<double>("ok_mean_residual_m", 0.10);
+    health_config_.ok_mean_residual_m = declare_parameter<double>("ok_mean_residual_m", 0.15);
     health_config_.degraded_mean_residual_m =
-        declare_parameter<double>("degraded_mean_residual_m", 0.20);
+        declare_parameter<double>("degraded_mean_residual_m", 0.30);
     health_config_.ok_inlier_ratio = declare_parameter<double>("ok_inlier_ratio", 0.55);
     health_config_.degraded_inlier_ratio = declare_parameter<double>("degraded_inlier_ratio", 0.35);
     health_config_.lost_timeout_sec = declare_parameter<double>("lost_timeout_sec", 1.0);
